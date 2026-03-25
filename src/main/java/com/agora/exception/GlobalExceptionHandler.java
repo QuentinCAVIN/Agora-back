@@ -1,12 +1,14 @@
 package com.agora.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.bind.annotation.*;
+import org.slf4j.MDC;
 
 import java.util.stream.Collectors;
 
@@ -14,41 +16,120 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // ======================================================
+    //  CORE BUILDER
+    // ======================================================
+    private ResponseEntity<ApiError> buildError(
+            ErrorCode code,
+            String message,
+            HttpServletRequest request,
+            Exception ex) {
+
+        String finalMessage = (message != null && !message.isBlank())
+                ? message
+                : code.defaultMessage();
+        String traceId = MDC.get("traceId");
+        String correlationId = MDC.get("correlationId");
+
+        ApiError error = new ApiError(
+                code,
+                message,
+                request.getRequestURI(),
+                traceId,
+                correlationId
+        );
+        //  Logging intelligent
+        if (code.status().is5xxServerError()) {
+            log.error("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage, ex);
+        } else if (code.status().is4xxClientError()) {
+            log.warn("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage);
+        } else {
+            log.info("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage);
+        }
+
+        return ResponseEntity.status(code.status()).body(error);
+    }
+
+    private ResponseEntity<ApiError> buildError(
+            ErrorCode code,
+            String message,
+            HttpServletRequest request) {
+        return buildError(code, message, request, null);
+    }
+
+    // ======================================================
+    //  BUSINESS
+    // ======================================================
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiError> handleBusiness(
+            BusinessException ex,
+            HttpServletRequest request) {
+
+        return buildError(ex.getCode(), ex.getMessage(), request, ex);
+    }
+
+    // ======================================================
+    // 🧪 VALIDATION
+    // ======================================================
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidationException(
+    public ResponseEntity<ApiError> handleValidation(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
         String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
-        ApiError error = new ApiError(
-                HttpStatus.BAD_REQUEST.value(),
-                "Validation Error",
-                message,
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.badRequest().body(error);
+        return buildError(ErrorCode.INVALID_STATUS_TRANSITION, message, request, ex);
     }
 
-    // TODO: Étape sécurité — ajouter handler pour AccessDeniedException et AuthenticationException
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraint(
+            ConstraintViolationException ex,
+            HttpServletRequest request) {
 
+        String message = ex.getConstraintViolations().iterator().next().getMessage();
+
+        return buildError(ErrorCode.INVALID_STATUS_TRANSITION, message, request, ex);
+    }
+
+
+
+
+
+    // ======================================================
+    // 🗃️ DATABASE
+    // ======================================================
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(
+            DataIntegrityViolationException ex,
+            HttpServletRequest request) {
+
+        log.warn("Data integrity violation: {}", ex.getMessage());
+
+        return buildError(
+                ErrorCode.EMAIL_ALREADY_EXISTS,
+                "Conflit de données détecté",
+                request,
+                ex
+        );
+    }
+
+    // ======================================================
+    // FALLBACK
+    // ======================================================
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGenericException(
+    public ResponseEntity<ApiError> handleGeneric(
             Exception ex,
             HttpServletRequest request) {
 
-        log.error("Unhandled exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+        log.error("Unhandled exception: {}", ex.getMessage(), ex);
 
-        ApiError error = new ApiError(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Internal Server Error",
-                "Une erreur inattendue s'est produite",
-                request.getRequestURI()
+        return buildError(
+                ErrorCode.API_UNAVAILABLE,
+                null,
+                request,
+                ex
         );
-
-        return ResponseEntity.internalServerError().body(error);
     }
 }
