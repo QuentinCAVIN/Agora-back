@@ -1,8 +1,8 @@
 package com.agora.exception;
 
-public class AuthInvalidCredentialsException extends RuntimeException {
+public class AuthInvalidCredentialsException extends BusinessException {
 
     public AuthInvalidCredentialsException() {
-        super("Email ou mot de passe invalide");
+        super(ErrorCode.AUTH_INVALID_CREDENTIALS);
     }
 }

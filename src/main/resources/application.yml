@@ -35,3 +35,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+logging:
+  pattern:
+    level: "%5p [traceId=%X{traceId}] [corrId=%X{correlationId}]"

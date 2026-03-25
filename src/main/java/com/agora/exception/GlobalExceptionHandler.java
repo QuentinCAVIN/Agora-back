@@ -1,8 +1,10 @@
 package com.agora.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.slf4j.MDC;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,89 +16,97 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // ======================================================
+    //  CORE BUILDER
+    // ======================================================
+    private ResponseEntity<ApiError> buildError(
+            ErrorCode code,
+            String message,
+            HttpServletRequest request,
+            Exception ex) {
+
+        String finalMessage = (message != null && !message.isBlank())
+                ? message
+                : code.defaultMessage();
+        String traceId = MDC.get("traceId");
+        String correlationId = MDC.get("correlationId");
+
+        ApiError error = new ApiError(code, message, request.getRequestURI(), traceId, correlationId);
+
+        if (code.status().is5xxServerError()) {
+            log.error("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage, ex);
+        } else if (code.status().is4xxClientError()) {
+            log.warn("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage);
+        } else {
+            log.info("[{}] {} -> {}", code.code(), request.getRequestURI(), finalMessage);
+        }
+
+        return ResponseEntity.status(code.status()).body(error);
+    }
+
+    private ResponseEntity<ApiError> buildError(
+            ErrorCode code,
+            String message,
+            HttpServletRequest request) {
+        return buildError(code, message, request, null);
+    }
+
+    // ======================================================
+    //  BUSINESS — couvre EmailAlreadyExists, AuthInvalidCredentials,
+    //             AuthAccountNotAllowed, ResourceNotFound, etc.
+    // ======================================================
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiError> handleBusiness(
+            BusinessException ex,
+            HttpServletRequest request) {
+        return buildError(ex.getCode(), ex.getMessage(), request, ex);
+    }
+
+    // ======================================================
+    //  VALIDATION (@Valid sur les DTOs)
+    // ======================================================
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiError> handleValidationException(
+    public ResponseEntity<ApiError> handleValidation(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
 
         String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                .map(err -> err.getField() + ": " + err.getDefaultMessage())
                 .collect(Collectors.joining(", "));
 
-        ApiError error = new ApiError(
-                HttpStatus.BAD_REQUEST.value(),
-                "Validation Error",
-                message,
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.badRequest().body(error);
+        return buildError(ErrorCode.VALIDATION_ERROR, message, request, ex);
     }
 
-    // TODO: Étape sécurité — ajouter handler pour AccessDeniedException et AuthenticationException
-
-    @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<ApiError> handleEmailAlreadyExists(
-            EmailAlreadyExistsException ex,
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiError> handleConstraint(
+            ConstraintViolationException ex,
             HttpServletRequest request) {
 
-        ApiError error = new ApiError(
-                HttpStatus.CONFLICT.value(),
-                "Conflict",
-                "EMAIL_ALREADY_EXISTS",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        String message = ex.getConstraintViolations().iterator().next().getMessage();
+        return buildError(ErrorCode.VALIDATION_ERROR, message, request, ex);
     }
 
-    @ExceptionHandler(AuthInvalidCredentialsException.class)
-    public ResponseEntity<ApiError> handleInvalidCredentials(
-            AuthInvalidCredentialsException ex,
+    // ======================================================
+    //  DATABASE — conflit d'intégrité générique
+    // ======================================================
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(
+            DataIntegrityViolationException ex,
             HttpServletRequest request) {
 
-        ApiError error = new ApiError(
-                HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
-                "AUTH_INVALID_CREDENTIALS",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+        log.warn("Data integrity violation on {}: {}", request.getRequestURI(), ex.getMessage());
+        return buildError(ErrorCode.DATA_CONFLICT, null, request, ex);
     }
 
-    @ExceptionHandler(AuthAccountNotAllowedException.class)
-    public ResponseEntity<ApiError> handleAccountNotAllowed(
-            AuthAccountNotAllowedException ex,
-            HttpServletRequest request) {
-
-        ApiError error = new ApiError(
-                HttpStatus.FORBIDDEN.value(),
-                "Forbidden",
-                "AUTH_ACCOUNT_NOT_ALLOWED",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
-    }
-
+    // ======================================================
+    //  FALLBACK
+    //  TODO: Étape sécurité — ajouter handler AccessDeniedException et AuthenticationException
+    // ======================================================
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiError> handleGenericException(
+    public ResponseEntity<ApiError> handleGeneric(
             Exception ex,
             HttpServletRequest request) {
 
-        log.error("Unhandled exception on {}: {}", request.getRequestURI(), ex.getMessage(), ex);
-
-        ApiError error = new ApiError(
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Internal Server Error",
-                "Une erreur inattendue s'est produite",
-                request.getRequestURI()
-        );
-
-        return ResponseEntity.internalServerError().body(error);
+        return buildError(ErrorCode.API_UNAVAILABLE, null, request, ex);
     }
 }
