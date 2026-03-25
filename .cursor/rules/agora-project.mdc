@@ -1,0 +1,63 @@
+---
+description: Règles projet AGORA
+alwaysApply: true
+---
+
+# Règles projet AGORA
+
+## Architecture
+
+- Architecture en couches STRICTE : `controller → service → repository → entity`
+- Package racine : `com.agora`
+- Sous-packages autorisés : `controller`, `service`, `repository`, `entity`, `dto`, `mapper`, `config`, `exception`, `enums`
+- Aucune logique métier dans les controllers
+- DTO obligatoires : ne jamais exposer directement une entité JPA dans une réponse HTTP
+
+## Modélisation
+
+- Relation User ↔ Group = **MANY-TO-MANY via entité explicite `GroupMembership`**
+- Toujours préférer une entité de jointure explicite plutôt qu'un `@ManyToMany` implicite (extensibilité : rôles, dates, tarification)
+- UUID pour toutes les clés primaires (`@UuidGenerator`)
+- Enums stockés en base comme `VARCHAR` (`@Enumerated(EnumType.STRING)`)
+
+## Base de données
+
+- **Flyway obligatoire** pour toute évolution du schéma
+- Ne jamais modifier une migration existante (checksum Flyway)
+- `ddl-auto = validate` : le schéma SQL est la source de vérité
+- La table de jointure `group_membership` est une vraie table avec sa propre PK
+
+## Vocabulaire métier
+
+Utiliser exclusivement ces noms dans le code et les migrations :
+
+| Concept | Nom Java | Table SQL |
+|---|---|---|
+| Type de compte utilisateur | `AccountType` | colonne `account_type` |
+| Statut du compte | `AccountStatus` | colonne `account_status` |
+| Groupe | `Group` | `groups` |
+| Appartenance groupe/user | `GroupMembership` | `group_membership` |
+
+## Développement
+
+- Travailler de manière **incrémentale** : le projet doit compiler et démarrer à chaque étape
+- Pas de sur-ingénierie : n'implémenter que ce qui est nécessaire à l'étape courante
+- Pas de code inutilement complexe ou générique
+
+## Séparation des responsabilités
+
+- `Controller` = gestion HTTP uniquement (parsing requête, code réponse)
+- `Service` = logique métier, transactions, orchestration
+- `Repository` = accès aux données, requêtes JPA/JPQL
+
+## Conventions de code
+
+- Lombok autorisé (`@Getter`, `@Setter`, `@Builder`, `@NoArgsConstructor`, etc.)
+- MapStruct pour les mappings entité ↔ DTO
+- Validation via `jakarta.validation` (`@NotBlank`, `@Email`, etc.)
+
+## Objectif global
+
+- Code lisible, maintenable, démontrable en soutenance Ynov
+- Cohérence front/back via contrat API (OpenAPI / Swagger)
+- Projet scolaire sérieux : préférer la clarté à la sophistication
