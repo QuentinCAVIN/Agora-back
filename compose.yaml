@@ -1,23 +1,45 @@
-version: "3.9"
-
 services:
+
   postgres:
     image: postgres:16
-    container_name: agora-postgres
-    restart: unless-stopped
+    container_name: agora-db
+    restart: always
     environment:
-      POSTGRES_DB: agora_dev
-      POSTGRES_USER: agora
-      POSTGRES_PASSWORD: agora
-    ports:
-      - "5432:5432"
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U agora -d agora_dev"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  backend:
+    build: .
+    container_name: agora-backend
+    depends_on:
+      - postgres
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  zabbix-agent:
+    image: zabbix/zabbix-agent2:latest
+    container_name: agora-zabbix-agent
+    restart: always
+    environment:
+      ZBX_SERVER_HOST: ${ZABBIX_SERVER_IP}
+      ZBX_HOSTNAME: ${ZABBIX_HOSTNAME}
+    ports:
+      - "10050:10050"
+    volumes:
+      - ./monitoring/zabbix/zabbix_agentd.conf:/etc/zabbix/zabbix_agentd.conf
+    depends_on:
+      - backend
+      - postgres
 
 volumes:
   postgres_data:
