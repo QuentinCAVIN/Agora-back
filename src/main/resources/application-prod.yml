@@ -1,0 +1,16 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://postgres:5432/agora}
+    username: ${SPRING_DATASOURCE_USERNAME:agora}
+    password: ${SPRING_DATASOURCE_PASSWORD:agora}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    show-sql: false
+
+  flyway:
+    enabled: true

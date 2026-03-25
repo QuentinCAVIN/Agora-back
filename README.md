@@ -51,3 +51,25 @@ com.agora
  |- config       -> Configuration Spring (Security, OpenAPI)
  |- exception    -> Gestion globale des erreurs
 ```
+# AGORA Backend — Monitoring
+
+## Zabbix Agent intégré
+
+### Configuration
+
+Modifier dans docker-compose.yml :
+
+ZBX_SERVER_HOST=IP_DU_SERVEUR_ZABBIX
+
+### Hostname
+
+agora-app
+
+### Port
+
+10050 doit être accessible depuis le serveur Zabbix.
+
+### Endpoints
+
+- http://localhost:8080/actuator/health
+- http://localhost:8080/v3/api-docs
