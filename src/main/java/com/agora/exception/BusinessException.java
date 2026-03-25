@@ -1,6 +1,5 @@
 package com.agora.exception;
 
-import com.agora.exception.ErrorCode;
 import lombok.Getter;
 
 @Getter

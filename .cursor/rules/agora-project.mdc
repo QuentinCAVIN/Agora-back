@@ -10,6 +10,7 @@ alwaysApply: true
 - Architecture en couches STRICTE : `controller → service → repository → entity`
 - Package racine : `com.agora`
 - Sous-packages autorisés : `controller`, `service`, `repository`, `entity`, `dto`, `mapper`, `config`, `exception`, `enums`
+- **Organisation hybride** : sous chaque couche, un sous-package métier stable (tout en minuscules, un mot par segment : `auth`, `user`, `group`, `resource`, `audit`, …). Exemples : `com.agora.controller.auth`, `com.agora.service.impl.resource`, `com.agora.dto.request.auth`, `com.agora.exception.resource`. Pas de package racine `util` ; aspects / filtres transverses sous `config`.
 - Aucune logique métier dans les controllers
 - DTO obligatoires : ne jamais exposer directement une entité JPA dans une réponse HTTP
 

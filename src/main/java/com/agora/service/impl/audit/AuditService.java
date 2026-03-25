@@ -1,7 +1,7 @@
 package com.agora.service.impl.audit;
 
-import com.agora.entity.AuditLog;
-import com.agora.repository.AuditLogRepository;
+import com.agora.entity.audit.AuditLog;
+import com.agora.repository.audit.AuditLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ public class AuditService {
         try {
             String json = details != null ? objectMapper.writeValueAsString(details) : null;
 
-            AuditLog log = AuditLog.builder()
+            AuditLog logEntry = AuditLog.builder()
                     .action(action)
                     .adminUser(adminUser)
                     .targetUser(targetUser)
@@ -29,11 +29,9 @@ public class AuditService {
                     .performedAt(Instant.now())
                     .build();
 
-            repository.save(log);
+            repository.save(logEntry);
 
         } catch (Exception e) {
-            // ❗ on ne casse jamais le flow métier pour un audit
-            // 👉 SLF4J ici
             System.err.println("Audit log failed: " + e.getMessage());
         }
     }
