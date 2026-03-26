@@ -51,8 +51,8 @@ Get-Content .env | ForEach-Object {
 
 ## Verification
 
-- Health API: http://localhost:${BACKEND_PORT:-8080}/api/health
-- Swagger UI: http://localhost:${BACKEND_PORT:-8080}/swagger-ui/index.html
+- Health API: http://localhost:${BACKEND_PORT:-8081}/api/health
+- Swagger UI: http://localhost:${BACKEND_PORT:-8081}/swagger-ui/index.html
 
 ## Variables d'environnement
 
