@@ -29,6 +29,7 @@ Voir `.env.example`.
 ## Resolution de problemes
 
 - Port déjà pris (8080/5432): change `BACKEND_PORT` / `DB_PORT` dans `.env` (ou copie `.env.example` → `.env`).
+- Windows: si tu as une erreur de bind sur `127.0.0.1:8080` ("access permissions"), mets `BIND_ADDR=0.0.0.0` dans `.env` (ou change `BACKEND_PORT`).
 - Flyway / migrations incohérentes après des changements d'historique: reset du volume DB dev :
 
 ```powershell

@@ -11,7 +11,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:${DB_PORT:-5432}:5432"
+      - "${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-agora} -d ${DB_NAME:-agora} -h 127.0.0.1 -p 5432"]
       interval: 5s
@@ -34,7 +34,7 @@ services:
       # (ex: renommage/historique). Permet de démarrer en dev sans erreur de validation.
       SPRING_FLYWAY_OUT_OF_ORDER: "true"
     ports:
-      - "127.0.0.1:${BACKEND_PORT:-8080}:8080"
+      - "${BIND_ADDR:-127.0.0.1}:${BACKEND_PORT:-8080}:8080"
     restart: unless-stopped
 
   zabbix-agent:
