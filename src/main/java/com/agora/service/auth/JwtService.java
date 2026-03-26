@@ -1,8 +1,10 @@
 package com.agora.service.auth;
 
 import com.agora.entity.user.User;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -42,7 +44,7 @@ public class JwtService {
         Instant exp = now.plusSeconds(expiresInSeconds);
 
         return Jwts.builder()
-                .setSubject(user.getId().toString())
+                .setSubject(user.getEmail())
                 .setIssuedAt(Date.from(now))
                 .setExpiration(Date.from(exp))
                 .claim("email", user.getEmail())
@@ -50,5 +52,26 @@ public class JwtService {
                 .claim("accountStatus", user.getAccountStatus().name())
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public boolean isTokenValid(String token) {
+        try {
+            parseClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
+    }
+
+    public String extractSubject(String token) {
+        return parseClaims(token).getSubject();
+    }
+
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(key)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }

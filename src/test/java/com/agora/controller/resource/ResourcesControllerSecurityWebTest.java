@@ -3,7 +3,9 @@ package com.agora.controller.resource;
 import com.agora.config.SecurityConfig;
 import com.agora.dto.response.common.PagedResponse;
 import com.agora.dto.response.resource.ResourceDto;
+import com.agora.service.auth.JwtService;
 import com.agora.service.resource.ResourceService;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -21,6 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ResourcesController.class)
 @Import(SecurityConfig.class)
+@Tag("security-web")
 class ResourcesControllerSecurityWebTest {
 
     @Autowired
@@ -28,6 +31,9 @@ class ResourcesControllerSecurityWebTest {
 
     @MockBean
     private ResourceService resourceService;
+
+    @MockBean
+    private JwtService jwtService;
 
     @Test
     void getResources_withoutAuthentication_returnsOk() throws Exception {

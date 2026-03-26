@@ -1,5 +1,6 @@
 package com.agora.config;
 
+import com.agora.service.auth.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,8 +24,8 @@ public class SecurityConfig {
     };
 
     @Bean
-    public JwtAuthenticationFilter jwtAuthenticationFilter() {
-        return new JwtAuthenticationFilter();
+    public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
+        return new JwtAuthenticationFilter(jwtService);
     }
 
     @Bean
