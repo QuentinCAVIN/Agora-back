@@ -1,8 +1,11 @@
 spring:
   datasource:
-    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/agora}
-    username: ${SPRING_DATASOURCE_USERNAME:agora}
-    password: ${SPRING_DATASOURCE_PASSWORD:agora}
+    # Permet de fonctionner en dev :
+    # - via Docker (SPRING_DATASOURCE_* injectés par compose)
+    # - ou via spring-boot:run en local (DB_* depuis .env si exportées)
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:agora}}
+    username: ${SPRING_DATASOURCE_USERNAME:${DB_USER:agora}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${DB_PASS:agora}}
     driver-class-name: org.postgresql.Driver
 
   jpa:

@@ -17,6 +17,34 @@ Backend Spring Boot pour la gestion des reservations de ressources municipales (
 docker compose up -d
 ```
 
+### Alternative: lancer Spring Boot en local (en gardant Postgres via Docker)
+
+- Démarre uniquement la DB :
+
+```powershell
+docker compose up -d postgres
+```
+
+- Charge les variables `.env` puis démarre Spring Boot.
+  - Sur macOS/Linux (bash/zsh) :
+
+```bash
+set -a && source .env && set +a
+./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
+  - Sur Windows (PowerShell) :
+
+```powershell
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*#') { return }
+  if ($_ -match '^\s*$') { return }
+  $kv = $_.Split('=',2)
+  [System.Environment]::SetEnvironmentVariable($kv[0], $kv[1])
+}
+.\mvnw.cmd spring-boot:run -Dspring-boot.run.profiles=dev
+```
+
 ## Verification
 
 - Health API: http://localhost:${BACKEND_PORT:-8080}/api/health
