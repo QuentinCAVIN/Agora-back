@@ -25,6 +25,10 @@ docker compose up -d
 docker compose up -d postgres
 ```
 
+- Ou en 1 commande via les scripts :
+  - macOS/Linux : `./scripts/dev-run-local.sh`
+  - Windows (PowerShell) : `.\scripts\dev-run-local.ps1`
+
 - Charge les variables `.env` puis démarre Spring Boot.
   - Sur macOS/Linux (bash/zsh) :
 
