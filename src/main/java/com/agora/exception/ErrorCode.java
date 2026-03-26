@@ -15,6 +15,7 @@ public enum ErrorCode {
     AUTH_BAD_CREDENTIALS("AUTH-001", HttpStatus.UNAUTHORIZED, "Identifiants incorrects"),
     AUTH_INVALID_CREDENTIALS("AUTH_INVALID_CREDENTIALS", HttpStatus.UNAUTHORIZED, "Email ou mot de passe invalide"),
     AUTH_ACCOUNT_NOT_ALLOWED("AUTH_ACCOUNT_NOT_ALLOWED", HttpStatus.FORBIDDEN, "Ce compte n'est pas autorisé à se connecter"),
+    AUTH_USER_NOT_FOUND("AUTH_USER_NOT_FOUND", HttpStatus.NOT_FOUND, "Utilisateur authentifie introuvable"),
     AUTH_REQUIRED("AUTH-002", HttpStatus.UNAUTHORIZED, "Authentification requise ou invalide"),
     ACCESS_DENIED("AUTH-003", HttpStatus.FORBIDDEN, "Accès refusé"),
     AUTH_INVALID_TOKEN("AUTH-004", HttpStatus.UNAUTHORIZED, "Token JWT invalide"),
