@@ -1,4 +1,4 @@
-﻿# AGORA - Backend de reservation de ressources
+# AGORA - Backend de reservation de ressources
 
 Backend Spring Boot pour la gestion des reservations de ressources municipales (projet scolaire Ynov).
 
@@ -11,22 +11,16 @@ Backend Spring Boot pour la gestion des reservations de ressources municipales (
 
 ## Lancement local
 
-### 1) Demarrer PostgreSQL avec Docker
+### 1) Démarrer la stack Docker (PostgreSQL + backend)
 
 ```powershell
-docker compose up -d postgres
-```
-
-### 2) Demarrer l'application Spring Boot
-
-```powershell
-.\mvnw.cmd spring-boot:run
+docker compose up -d
 ```
 
 ## Verification
 
-- Health API: http://localhost:8080/api/health
-- Swagger UI: http://localhost:8080/swagger-ui/index.html
+- Health API: http://localhost:${BACKEND_PORT:-8080}/api/health
+- Swagger UI: http://localhost:${BACKEND_PORT:-8080}/swagger-ui/index.html
 
 ## Variables d'environnement
 
@@ -34,8 +28,14 @@ Voir `.env.example`.
 
 ## Resolution de problemes
 
-- Port 5432 deja pris: change le mapping dans `compose.yaml` (ex: `5433:5432`) puis adapte `SPRING_DATASOURCE_URL`.
-- Base non prete au demarrage: attends l'etat `healthy` du conteneur puis relance Spring Boot.
+- Port déjà pris (8080/5432): change `BACKEND_PORT` / `DB_PORT` dans `.env` (ou copie `.env.example` → `.env`).
+- Flyway / migrations incohérentes après des changements d'historique: reset du volume DB dev :
+
+```powershell
+docker compose down -v
+docker compose up -d
+```
+
 - JAVA_HOME manquant: definis `JAVA_HOME` ou garde Java accessible via `PATH`.
 
 ## Architecture
@@ -71,5 +71,5 @@ agora-app
 
 ### Endpoints
 
-- http://localhost:8080/actuator/health
-- http://localhost:8080/v3/api-docs
+- http://localhost:${BACKEND_PORT:-8080}/actuator/health
+- http://localhost:${BACKEND_PORT:-8080}/v3/api-docs

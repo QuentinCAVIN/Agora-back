@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/agora_dev
-    username: agora
-    password: agora
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/agora}
+    username: ${SPRING_DATASOURCE_USERNAME:agora}
+    password: ${SPRING_DATASOURCE_PASSWORD:agora}
     driver-class-name: org.postgresql.Driver
 
   jpa:
