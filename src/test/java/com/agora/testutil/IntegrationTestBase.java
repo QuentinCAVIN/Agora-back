@@ -9,14 +9,24 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 import org.springframework.http.client.ClientHttpResponse;
+import org.junit.jupiter.api.Tag;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.DefaultResponseErrorHandler;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
 import java.io.IOException;
 
+/**
+ * Base des tests d'integration metier.
+ *
+ * IMPORTANT:
+ * - Profile "test" + TestSecurityConfig => securite HTTP bypassée (permitAll).
+ * - Ces tests valident les comportements metier/API, pas la securite reelle.
+ * - La validation de securite se fait dans des tests dedies tagges "security-web".
+ */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
+@Tag("integration-business")
 public abstract class IntegrationTestBase {
 
     @LocalServerPort

@@ -5,8 +5,10 @@ import com.agora.dto.response.auth.AuthMeResponseDto;
 import com.agora.dto.response.auth.UserGroupSummaryDto;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
+import com.agora.service.auth.JwtService;
 import com.agora.service.auth.AuthMeService;
 import com.agora.service.auth.AuthService;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -27,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(AuthController.class)
 @Import(SecurityConfig.class)
+@Tag("security-web")
 class AuthControllerMeWebTest {
 
     @Autowired
@@ -37,6 +40,9 @@ class AuthControllerMeWebTest {
 
     @MockBean
     private AuthMeService authMeService;
+
+    @MockBean
+    private JwtService jwtService;
 
     @Test
     @WithMockUser(username = "user@example.com")

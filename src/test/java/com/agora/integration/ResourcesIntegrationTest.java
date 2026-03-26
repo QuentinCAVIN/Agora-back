@@ -9,6 +9,7 @@ import com.agora.exception.ErrorCode;
 import com.agora.testutil.IntegrationTestBase;
 import com.agora.testutil.ResourceTestData;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.*;
 
@@ -17,6 +18,14 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+/**
+ * Tests d'integration metier sur les ressources.
+ *
+ * IMPORTANT:
+ * execute sous profile "test" avec securite HTTP bypassée.
+ * Ne pas interpreter cette classe comme validation des regles de securite.
+ */
+@Tag("integration-business")
 class ResourcesIntegrationTest extends IntegrationTestBase {
 
     // =========================================
