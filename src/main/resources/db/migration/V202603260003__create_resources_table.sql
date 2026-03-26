@@ -13,7 +13,7 @@ CREATE TABLE resources (
 
                            active BOOLEAN NOT NULL DEFAULT TRUE,
 
-                           accessibility_tags JSONB NOT NULL DEFAULT '[]',
+                           accessibility_tags TEXT NOT NULL DEFAULT '[]',
 
                            deposit_amount_cents DOUBLE PRECISION NOT NULL DEFAULT 0,
 
@@ -22,11 +22,12 @@ CREATE TABLE resources (
                            created_at TIMESTAMP NOT NULL,
                            updated_at TIMESTAMP,
                            created_by VARCHAR(100),
-                           updated_by VARCHAR(100)
+                           updated_by VARCHAR(100),
+
+                           is_deleted BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- Index utiles 🔥
 CREATE INDEX idx_resources_type ON resources(resource_type);
 CREATE INDEX idx_resources_active ON resources(active);
 CREATE INDEX idx_resources_capacity ON resources(capacity);
-CREATE INDEX idx_resources_tags ON resources USING GIN (accessibility_tags);

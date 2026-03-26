@@ -5,36 +5,47 @@ services:
     container_name: agora-db
     restart: always
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME:-agora}
+      POSTGRES_USER: ${DB_USER:-agora}
+      POSTGRES_PASSWORD: ${DB_PASS:-agora}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"
+      - "${BIND_ADDR:-127.0.0.1}:${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-agora} -d ${DB_NAME:-agora} -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
 
   backend:
     build: .
     container_name: agora-backend
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-dev}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${DB_NAME:-agora}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-agora}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASS:-agora}
+      # Flyway: nécessaire quand des migrations sont ajoutées avec un numéro "ancien"
+      # (ex: renommage/historique). Permet de démarrer en dev sans erreur de validation.
+      SPRING_FLYWAY_OUT_OF_ORDER: "true"
     ports:
-      - "127.0.0.1:8080:8080"
+      - "${BIND_ADDR:-127.0.0.1}:${BACKEND_PORT:-8081}:8080"
+    restart: unless-stopped
 
   zabbix-agent:
     image: zabbix/zabbix-agent2:latest
     container_name: agora-zabbix-agent
     restart: always
     environment:
-      ZBX_SERVER_HOST: ${ZABBIX_SERVER_IP}
-      ZBX_HOSTNAME: ${ZABBIX_HOSTNAME}
+      ZBX_SERVER_HOST: ${ZABBIX_SERVER_IP:-CHANGE_ME}
+      ZBX_HOSTNAME: ${ZABBIX_HOSTNAME:-agora-app}
     ports:
-      - "10050:10050"
+      - "${ZABBIX_AGENT_PORT:-10050}:10050"
     volumes:
       - ./monitoring/zabbix/zabbix_agentd.conf:/etc/zabbix/zabbix_agentd.conf
     depends_on:
