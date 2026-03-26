@@ -4,6 +4,7 @@ import com.agora.dto.request.resource.ResourceRequest;
 import com.agora.dto.response.common.PagedResponse;
 import com.agora.dto.response.resource.ResourceDto;
 import com.agora.dto.response.resource.TimeSlotDto;
+import com.agora.enums.resource.ResourceType;
 import com.agora.service.resource.ResourceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,7 +51,10 @@ public class ResourcesController {
     })
     public PagedResponse<ResourceDto> getResources(
 
-            @Parameter(description = "Type de ressource (ROOM | EQUIPMENT)")
+            @Parameter(
+                    description = "Type de ressource (IMMOBILIER | MOBILIER)",
+                    schema = @Schema(allowableValues = {"IMMOBILIER", "MOBILIER"})
+            )
             @RequestParam(required = false) String type,
 
             @Parameter(description = "Capacité minimale")
