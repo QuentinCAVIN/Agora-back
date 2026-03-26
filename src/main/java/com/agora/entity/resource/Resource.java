@@ -1,6 +1,8 @@
 package com.agora.entity.resource;
 
+import com.agora.config.AccessibilityTagConverter;
 import com.agora.entity.common.Auditable;
+import com.agora.enums.resource.AccessibilityTag;
 import com.agora.enums.resource.ResourceType;
 import jakarta.persistence.*;
 import lombok.*;
@@ -18,7 +20,7 @@ import java.util.UUID;
 public class Resource extends Auditable {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(nullable = false)
@@ -29,17 +31,21 @@ public class Resource extends Auditable {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ResourceType type;
+    private ResourceType resourceType;
 
-    @Column(nullable = false)
+    @Column
     private Integer capacity;
 
     @Column(nullable = false)
     private boolean active = true;
 
-    @Column(nullable = false)
-    private List<String> accessibilityTags;
+    @Convert(converter = AccessibilityTagConverter.class)
+    @Column(name = "accessibility_tags", columnDefinition = "TEXT")
+    private List<AccessibilityTag> accessibilityTags;
 
-    @Column(nullable = false)
-    private double DepositAmountCents;
+    @Column(name = "deposit_amount_cents", nullable = false)
+    private double depositAmountCents;
+
+    @Column(name = "image_url")
+    private String imageUrl;
 }

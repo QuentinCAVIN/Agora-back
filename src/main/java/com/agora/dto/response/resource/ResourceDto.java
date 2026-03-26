@@ -12,6 +12,7 @@ public record ResourceDto(
         Integer capacity,
         String description,
         double depositAmountCents,
+        String imageUrl,
         List<String> accessibilityTags,
         boolean isActive
 ) {

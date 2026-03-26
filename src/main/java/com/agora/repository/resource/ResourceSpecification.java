@@ -20,21 +20,36 @@ public class ResourceSpecification {
         return (root, query, cb) -> {
 
             List<Predicate> predicates = new ArrayList<>();
+
+            // ✅ ACTIVE ONLY (contrat catalogue public)
             predicates.add(cb.isTrue(root.get("active")));
+
+            // ✅ TYPE
             if (type != null) {
-                predicates.add(cb.equal(root.get("type"), ResourceType.valueOf(type)));
+                try {
+                    ResourceType resourceType = ResourceType.valueOf(type);
+                    predicates.add(cb.equal(root.get("resourceType"), resourceType));
+                } catch (IllegalArgumentException e) {
+                    throw new IllegalArgumentException("Type invalide: " + type);
+                }
             }
+
+            // ✅ CAPACITY
             if (minCapacity != null) {
                 predicates.add(cb.greaterThanOrEqualTo(
                         root.get("capacity"),
                         minCapacity
                 ));
             }
-            if (available != null) {
-                // TODO brancher sur réservations
-            }
-            if (date != null) {
-                // TODO connecter avec Reservation
+
+            // 🔥 TODO PHASE 2 — disponibilité réelle
+            if (Boolean.TRUE.equals(available) && date != null) {
+                /*
+                 * TODO:
+                 * - join avec reservations
+                 * - exclure créneaux déjà pris
+                 * - filtrer par date
+                 */
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));

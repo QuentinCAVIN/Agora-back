@@ -1,6 +1,8 @@
 package com.agora.exception;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
@@ -21,6 +23,27 @@ public class ApiError {
 
     private final String traceId;
     private final String correlationId;
+
+    @JsonCreator(mode = JsonCreator.Mode.PROPERTIES)
+    public ApiError(
+            @JsonProperty("timestamp") OffsetDateTime timestamp,
+            @JsonProperty("status") int status,
+            @JsonProperty("error") String error,
+            @JsonProperty("code") String code,
+            @JsonProperty("message") String message,
+            @JsonProperty("path") String path,
+            @JsonProperty("traceId") String traceId,
+            @JsonProperty("correlationId") String correlationId
+    ) {
+        this.timestamp = (timestamp != null) ? timestamp : OffsetDateTime.now(ZoneOffset.UTC);
+        this.status = status;
+        this.error = error;
+        this.code = code;
+        this.message = message;
+        this.path = path;
+        this.traceId = traceId;
+        this.correlationId = correlationId;
+    }
 
     public ApiError(ErrorCode errorCode, String message, String path, String traceId, String correlationId) {
         this.timestamp = OffsetDateTime.now(ZoneOffset.UTC);

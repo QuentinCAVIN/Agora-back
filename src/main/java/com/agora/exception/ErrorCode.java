@@ -46,6 +46,8 @@ public enum ErrorCode {
     IMPERSONATION_FORBIDDEN("AUTH-013", HttpStatus.FORBIDDEN, "Le compte cible n'est pas de type TUTORED"),
 
     RESOURCE_NOT_FOUND("GEN-003", HttpStatus.NOT_FOUND, "Entité introuvable (réservation, utilisateur, ressource, etc.)"),
+    RESOURCE_TAG_INVALID("GEN-004", HttpStatus.BAD_REQUEST, "Tag d'accessibilité invalide"),
+    RESOURCE_CAPACITY_VIOLATION("GEN-005", HttpStatus.BAD_REQUEST, "La capacite est requise pour une ressource IMMOBILIER"),
 
     ACTIVATION_TOKEN_EXPIRED("AUTH-014", HttpStatus.BAD_REQUEST, "Lien d'activation expiré (> 72h)"),
     ACTIVATION_TOKEN_USED("AUTH-015", HttpStatus.BAD_REQUEST, "Lien d'activation déjà utilisé"),

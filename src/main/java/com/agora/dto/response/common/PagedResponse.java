@@ -11,9 +11,21 @@ public record PagedResponse<T>(
         int page,
         int size
 ) {
+
     public static <T> PagedResponse<T> from(Page<T> page) {
         return new PagedResponse<>(
                 page.getContent(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber(),
+                page.getSize()
+        );
+    }
+
+    //  BONUS (utile pour mapper DTO directement)
+    public static <T, R> PagedResponse<R> from(Page<T> page, List<R> content) {
+        return new PagedResponse<>(
+                content,
                 page.getTotalElements(),
                 page.getTotalPages(),
                 page.getNumber(),

@@ -87,6 +87,20 @@ public class GlobalExceptionHandler {
     }
 
     // ======================================================
+    //  BAD REQUEST — ex: enum invalide, parsing invalide
+    // ======================================================
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> handleIllegalArgument(
+            IllegalArgumentException ex,
+            HttpServletRequest request) {
+        String message = ex.getMessage();
+        ErrorCode code = (message != null && message.startsWith("Tag invalide:"))
+                ? ErrorCode.RESOURCE_TAG_INVALID
+                : ErrorCode.VALIDATION_ERROR;
+        return buildError(code, message, request, ex);
+    }
+
+    // ======================================================
     //  DATABASE — conflit d'intégrité générique
     // ======================================================
     @ExceptionHandler(DataIntegrityViolationException.class)
