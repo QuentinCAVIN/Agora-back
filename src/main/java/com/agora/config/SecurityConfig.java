@@ -46,8 +46,6 @@ public class SecurityConfig {
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // TODO(JWT): implémenter la validation du Bearer et peupler le SecurityContext dans JwtAuthenticationFilter
-
         return http.build();
     }
 
