@@ -17,12 +17,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Sécurité DEV uniquement.
+ * Sécurité active pour les profils dev / local / seed.
  *
- * Objectif: permettre au front de tester l'API tant que le JWT n'est pas branché
- * (pas de filtre d'auth, pas de validation du Bearer).
- *
- * À retirer / durcir quand le ticket JWT sera prêt.
+ * Reprend les règles de SecurityConfig en y ajoutant :
+ * - le filtre JWT MVP (lecture Bearer, validation, peuplement SecurityContext)
+ * - des réponses d'erreur JSON structurées (ApiError)
  */
 @Profile({"dev", "local", "seed"})
 @Configuration
@@ -40,7 +39,6 @@ public class DevSecurityConfig {
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Public
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/actuator/health").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
@@ -54,28 +52,20 @@ public class DevSecurityConfig {
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(403);
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    String traceId = MDC.get("traceId");
-                    String correlationId = MDC.get("correlationId");
                     ApiError body = new ApiError(
-                            ErrorCode.ACCESS_DENIED,
-                            null,
+                            ErrorCode.ACCESS_DENIED, null,
                             request.getRequestURI(),
-                            traceId,
-                            correlationId
+                            MDC.get("traceId"), MDC.get("correlationId")
                     );
                     objectMapper.writeValue(response.getOutputStream(), body);
                 })
                 .accessDeniedHandler((request, response, accessDeniedException) -> {
                     response.setStatus(403);
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-                    String traceId = MDC.get("traceId");
-                    String correlationId = MDC.get("correlationId");
                     ApiError body = new ApiError(
-                            ErrorCode.ACCESS_DENIED,
-                            null,
+                            ErrorCode.ACCESS_DENIED, null,
                             request.getRequestURI(),
-                            traceId,
-                            correlationId
+                            MDC.get("traceId"), MDC.get("correlationId")
                     );
                     objectMapper.writeValue(response.getOutputStream(), body);
                 })
@@ -84,4 +74,3 @@ public class DevSecurityConfig {
         return http.build();
     }
 }
-
