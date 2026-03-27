@@ -5,6 +5,7 @@ import com.agora.dto.response.auth.AuthMeResponseDto;
 import com.agora.dto.response.auth.UserGroupSummaryDto;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
+import com.agora.service.auth.AuthCookieService;
 import com.agora.service.auth.JwtService;
 import com.agora.service.auth.AuthMeService;
 import com.agora.service.auth.AuthService;
@@ -43,6 +44,9 @@ class AuthControllerMeWebTest {
 
     @MockBean
     private JwtService jwtService;
+
+    @MockBean
+    private AuthCookieService authCookieService;
 
     @Test
     @WithMockUser(username = "user@example.com")
