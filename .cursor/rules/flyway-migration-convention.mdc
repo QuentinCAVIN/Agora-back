@@ -1,0 +1,51 @@
+# Convention de migrations Flyway - AGORA
+
+## Nommage obligatoire
+
+Toutes les migrations Flyway doivent suivre ce format :
+
+```
+V{YYYYMMDDHHmm}__{description_en_snake_case}.sql
+```
+
+### Exemples valides
+
+```
+V202603261430__add_token_column_to_users.sql
+V202603271015__create_booking_table.sql
+V202603280900__add_index_on_resources_type.sql
+```
+
+### Exemples invalides
+
+```
+V10__add_token.sql          ← numéro séquentiel interdit
+V3__fix_something.sql       ← numéro séquentiel interdit
+```
+
+## Pourquoi ce format
+
+Le timestamp garantit l'unicité entre branches sans coordination manuelle.
+Deux développeurs sur deux branches différentes ne peuvent pas créer la même version au même moment.
+
+## Règles
+
+- **Un fichier = une migration atomique** : ne pas regrouper des changements sans lien
+- **Ne jamais modifier** un fichier déjà appliqué en base (checksum Flyway)
+- **Ne jamais supprimer** un fichier de migration existant
+- Si un correctif est nécessaire sur une migration déjà appliquée, créer une **nouvelle migration** avec un timestamp plus récent
+- Le `out-of-order: true` est activé en profil `dev` pour absorber les branches qui se croisent
+
+## Configuration active
+
+`application-dev.yml` :
+```yaml
+spring:
+  flyway:
+    enabled: true
+    out-of-order: true
+```
+
+## Historique
+
+Les migrations V1 à V9 (format legacy) ont été renommées le 2026-03-26 en format timestamp (V202603260001 à V202603260009) et la table `flyway_schema_history` a été mise à jour en conséquence.
