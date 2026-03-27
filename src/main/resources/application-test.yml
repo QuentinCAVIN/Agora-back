@@ -21,3 +21,11 @@ agora:
   jwt:
     secret: "AGORA_TEST_JWT_SECRET_32_CHARS_MINIMUM_1234567890"
     expires-in-seconds: 3600
+    refresh-expires-in-seconds: 1209600
+  auth:
+    refresh-cookie:
+      name: refreshToken
+      path: /api/auth
+      same-site: Lax
+      secure: false
+      domain: ""

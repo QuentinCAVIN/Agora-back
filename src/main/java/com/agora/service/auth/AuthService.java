@@ -50,6 +50,8 @@ public class AuthService {
         this.userMapper = userMapper;
     }
 
+    public record LoginResult(LoginResponseDto response, String refreshToken) {}
+
     @Transactional
     public RegisterResponseDto register(RegisterRequestDto request) {
         String email = request.getEmail().trim();
@@ -82,7 +84,7 @@ public class AuthService {
     }
 
     @Transactional(readOnly = true)
-    public LoginResponseDto login(LoginRequestDto request) {
+    public LoginResult login(LoginRequestDto request) {
         String email = request.getEmail().trim();
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(AuthInvalidCredentialsException::new);
@@ -100,13 +102,37 @@ public class AuthService {
             throw new AuthInvalidCredentialsException();
         }
 
-        String token = jwtService.generateAccessToken(user);
+        String accessToken = jwtService.generateAccessToken(user);
+        String refreshToken = jwtService.generateRefreshToken(user);
 
-        return new LoginResponseDto(
-                token,
+        LoginResponseDto response = new LoginResponseDto(
+                accessToken,
                 "Bearer",
                 jwtService.getExpiresInSeconds(),
                 userMapper.toUserSummary(user)
         );
+        return new LoginResult(response, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResult refresh(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank() || !jwtService.isRefreshTokenValid(refreshToken)) {
+            throw new AuthInvalidCredentialsException();
+        }
+
+        String email = jwtService.extractSubject(refreshToken);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(AuthInvalidCredentialsException::new);
+
+        String newAccessToken = jwtService.generateAccessToken(user);
+        String newRefreshToken = jwtService.generateRefreshToken(user);
+
+        LoginResponseDto response = new LoginResponseDto(
+                newAccessToken,
+                "Bearer",
+                jwtService.getExpiresInSeconds(),
+                userMapper.toUserSummary(user)
+        );
+        return new LoginResult(response, newRefreshToken);
     }
 }

@@ -76,9 +76,10 @@ class AuthServiceLoginTest {
         when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("SuperSecret123", "hashed")).thenReturn(true);
         when(jwtService.generateAccessToken(user)).thenReturn("jwt");
+        when(jwtService.generateRefreshToken(user)).thenReturn("refresh-jwt");
         when(jwtService.getExpiresInSeconds()).thenReturn(3600L);
 
-        LoginResponseDto response = authService.login(request);
+        LoginResponseDto response = authService.login(request).response();
 
         assertEquals("jwt", response.getAccessToken());
         assertEquals("Bearer", response.getTokenType());

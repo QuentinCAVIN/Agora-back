@@ -19,10 +19,12 @@ public class JwtService {
 
     private final SecretKey key;
     private final long expiresInSeconds;
+    private final long refreshExpiresInSeconds;
 
     public JwtService(
             @Value("${agora.jwt.secret}") String secret,
-            @Value("${agora.jwt.expires-in-seconds}") long expiresInSeconds
+            @Value("${agora.jwt.expires-in-seconds}") long expiresInSeconds,
+            @Value("${agora.jwt.refresh-expires-in-seconds}") long refreshExpiresInSeconds
     ) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("La configuration agora.jwt.secret est manquante");
@@ -33,10 +35,15 @@ public class JwtService {
         }
         this.key = Keys.hmacShaKeyFor(bytes);
         this.expiresInSeconds = expiresInSeconds;
+        this.refreshExpiresInSeconds = refreshExpiresInSeconds;
     }
 
     public long getExpiresInSeconds() {
         return expiresInSeconds;
+    }
+
+    public long getRefreshExpiresInSeconds() {
+        return refreshExpiresInSeconds;
     }
 
     public String generateAccessToken(User user) {
@@ -54,6 +61,19 @@ public class JwtService {
                 .compact();
     }
 
+    public String generateRefreshToken(User user) {
+        Instant now = Instant.now();
+        Instant exp = now.plusSeconds(refreshExpiresInSeconds);
+
+        return Jwts.builder()
+                .setSubject(user.getEmail())
+                .setIssuedAt(Date.from(now))
+                .setExpiration(Date.from(exp))
+                .claim("typ", "refresh")
+                .signWith(key, SignatureAlgorithm.HS256)
+                .compact();
+    }
+
     public boolean isTokenValid(String token) {
         try {
             parseClaims(token);
@@ -65,6 +85,16 @@ public class JwtService {
 
     public String extractSubject(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public boolean isRefreshTokenValid(String token) {
+        try {
+            Claims claims = parseClaims(token);
+            Object typ = claims.get("typ");
+            return "refresh".equals(typ);
+        } catch (JwtException | IllegalArgumentException ex) {
+            return false;
+        }
     }
 
     private Claims parseClaims(String token) {
