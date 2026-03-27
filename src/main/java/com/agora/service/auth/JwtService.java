@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 @Service
 public class JwtService {
@@ -20,11 +22,13 @@ public class JwtService {
     private final SecretKey key;
     private final long expiresInSeconds;
     private final long refreshExpiresInSeconds;
+    private final String adminEmail;
 
     public JwtService(
             @Value("${agora.jwt.secret}") String secret,
             @Value("${agora.jwt.expires-in-seconds}") long expiresInSeconds,
-            @Value("${agora.jwt.refresh-expires-in-seconds}") long refreshExpiresInSeconds
+            @Value("${agora.jwt.refresh-expires-in-seconds}") long refreshExpiresInSeconds,
+            @Value("${agora.auth.admin-email:admin@agora.local}") String adminEmail
     ) {
         if (secret == null || secret.isBlank()) {
             throw new IllegalStateException("La configuration agora.jwt.secret est manquante");
@@ -36,6 +40,7 @@ public class JwtService {
         this.key = Keys.hmacShaKeyFor(bytes);
         this.expiresInSeconds = expiresInSeconds;
         this.refreshExpiresInSeconds = refreshExpiresInSeconds;
+        this.adminEmail = (adminEmail == null) ? "admin@agora.local" : adminEmail.trim();
     }
 
     public long getExpiresInSeconds() {
@@ -50,6 +55,10 @@ public class JwtService {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(expiresInSeconds);
 
+        List<String> roles = (user.getEmail() != null && user.getEmail().equalsIgnoreCase(adminEmail))
+                ? List.of("ROLE_SECRETARY_ADMIN")
+                : List.of();
+
         return Jwts.builder()
                 .setSubject(user.getEmail())
                 .setIssuedAt(Date.from(now))
@@ -57,6 +66,7 @@ public class JwtService {
                 .claim("email", user.getEmail())
                 .claim("accountType", user.getAccountType().name())
                 .claim("accountStatus", user.getAccountStatus().name())
+                .claim("roles", roles)
                 .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
@@ -85,6 +95,15 @@ public class JwtService {
 
     public String extractSubject(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public List<String> extractRoles(String token) {
+        Claims claims = parseClaims(token);
+        Object roles = claims.get("roles");
+        if (roles instanceof List<?> list) {
+            return list.stream().map(String::valueOf).toList();
+        }
+        return Collections.emptyList();
     }
 
     public boolean isRefreshTokenValid(String token) {

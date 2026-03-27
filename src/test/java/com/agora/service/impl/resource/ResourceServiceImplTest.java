@@ -160,7 +160,7 @@ class ResourceServiceImplTest {
                 )
         );
 
-        var result = service.getResources(null, null, null, null, 0, 10);
+        var result = service.getResources(null, null, null, null, null, 0, 10);
 
         assertThat(result.content()).hasSize(1);
     }

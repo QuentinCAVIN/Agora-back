@@ -20,6 +20,7 @@ import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
@@ -50,6 +51,7 @@ public class ResourcesController {
             @ApiResponse(responseCode = "200", description = "Liste récupérée")
     })
     public PagedResponse<ResourceDto> getResources(
+            Authentication authentication,
 
             @Parameter(
                     description = "Type de ressource (IMMOBILIER | MOBILIER)",
@@ -74,7 +76,7 @@ public class ResourcesController {
             @Parameter(description = "Taille page (max 100)")
             @RequestParam(defaultValue = "20") int size
     ) {
-        return resourceService.getResources(type, minCapacity, available, date, page, size);
+        return resourceService.getResources(authentication, type, minCapacity, available, date, page, size);
     }
 
     // ======================================================

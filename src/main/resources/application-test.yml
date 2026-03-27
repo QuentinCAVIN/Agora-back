@@ -23,6 +23,7 @@ agora:
     expires-in-seconds: 3600
     refresh-expires-in-seconds: 1209600
   auth:
+    admin-email: admin@agora.local
     refresh-cookie:
       name: refreshToken
       path: /api/auth

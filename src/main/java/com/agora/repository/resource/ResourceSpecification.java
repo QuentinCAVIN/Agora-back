@@ -12,6 +12,7 @@ import java.util.List;
 public class ResourceSpecification {
 
     public static Specification<Resource> filter(
+            boolean includeInactive,
             String type,
             Integer minCapacity,
             Boolean available,
@@ -22,7 +23,9 @@ public class ResourceSpecification {
             List<Predicate> predicates = new ArrayList<>();
 
             // ✅ ACTIVE ONLY (contrat catalogue public)
-            predicates.add(cb.isTrue(root.get("active")));
+            if (!includeInactive) {
+                predicates.add(cb.isTrue(root.get("active")));
+            }
 
             // ✅ TYPE
             if (type != null && !type.isBlank()) {

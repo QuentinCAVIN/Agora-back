@@ -37,7 +37,7 @@ class ResourcesControllerSecurityWebTest {
 
     @Test
     void getResources_withoutAuthentication_returnsOk() throws Exception {
-        when(resourceService.getResources(any(), any(), any(), any(), anyInt(), anyInt()))
+        when(resourceService.getResources(any(), any(), any(), any(), any(), anyInt(), anyInt()))
                 .thenReturn(new PagedResponse<>(List.of(), 0, 0, 0, 20));
 
         mockMvc.perform(get("/api/resources"))
