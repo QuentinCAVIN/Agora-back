@@ -29,7 +29,12 @@ public enum ErrorCode {
     // ======================================================
     // MÉTIER / RÉSERVATION / FICHIERS
     // ======================================================
-    SLOT_UNAVAILABLE("RES-001", HttpStatus.CONFLICT, "Créneau déjà occupé au moment de la validation"),
+    SLOT_UNAVAILABLE("SLOT_UNAVAILABLE", HttpStatus.CONFLICT, "Créneau déjà occupé au moment de la validation"),
+    RESERVATION_FORBIDDEN_NO_GROUP(
+            "RESERVATION_FORBIDDEN_NO_GROUP",
+            HttpStatus.FORBIDDEN,
+            "Aucun groupe n'autorise cette catégorie"
+    ),
     INVALID_STATUS_TRANSITION("RES-002", HttpStatus.CONFLICT, "Transition de statut non autorisée (paiement, réservation)"),
     LAST_ADMIN_CONSTRAINT("AUTH-011", HttpStatus.CONFLICT, "Impossible de révoquer le dernier SECRETARY_ADMIN"),
     EMAIL_ALREADY_EXISTS("EMAIL_ALREADY_EXISTS", HttpStatus.CONFLICT, "Email déjà utilisé lors de l'inscription"),
