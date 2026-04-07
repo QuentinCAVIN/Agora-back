@@ -21,6 +21,11 @@ agora:
     secret: ${AGORA_JWT_SECRET:CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}
     expires-in-seconds: ${AGORA_JWT_EXPIRES_IN_SECONDS:3600}
     refresh-expires-in-seconds: ${AGORA_JWT_REFRESH_EXPIRES_IN_SECONDS:1209600} # 14 jours
+  # CORS : si allowed-origin-patterns est vide/absent, défauts dev (localhost, .local, RFC1918) — voir CorsConfig.
+  # Production : lister uniquement les origines réelles, ex. [ "https://app.ville.fr" ]
+  cors:
+    allow-credentials: true
+    max-age-seconds: 3600
   auth:
     admin-email: ${AGORA_AUTH_ADMIN_EMAIL:admin@agora.local}
     refresh-cookie:

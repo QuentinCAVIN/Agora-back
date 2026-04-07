@@ -59,6 +59,17 @@ class AuthCorsIntegrationTest {
     }
 
     @Test
+    void options_login_shouldBeAllowedWithCorsHeaders() throws Exception {
+        mockMvc.perform(options("/api/auth/login")
+                        .header("Origin", ORIGIN)
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "content-type"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN))
+                .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+    }
+
+    @Test
     void register_shouldRemainPublic() throws Exception {
         // Le DTO réel peut évoluer ; ce test vérifie surtout qu'on ne retombe pas sur un 403.
         mockMvc.perform(post("/api/auth/register")
