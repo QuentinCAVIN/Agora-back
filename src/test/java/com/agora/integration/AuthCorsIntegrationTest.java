@@ -54,7 +54,7 @@ class AuthCorsIntegrationTest {
                         .header("Access-Control-Request-Method", "POST")
                         .header("Access-Control-Request-Headers", "content-type"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "*"))
+                .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
@@ -65,7 +65,7 @@ class AuthCorsIntegrationTest {
                         .header("Access-Control-Request-Method", "POST")
                         .header("Access-Control-Request-Headers", "content-type"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Access-Control-Allow-Origin", "*"))
+                .andExpect(header().string("Access-Control-Allow-Origin", ORIGIN))
                 .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
     }
 
