@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CorsConfig {
 
-    private static final List<String> DEFAULT_ORIGIN_PATTERNS = buildDefaultOriginPatterns();
+    private static final List<String> DEFAULT_ORIGIN_PATTERNS = List.of("*");
 
     private static List<String> buildDefaultOriginPatterns() {
         List<String> patterns = new ArrayList<>(List.of(
@@ -83,7 +83,9 @@ public class CorsConfig {
         config.setMaxAge(corsProperties.getMaxAgeSeconds());
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        // S'assurer que la configuration s'applique à tous les chemins, y compris l'auth
         source.registerCorsConfiguration("/**", config);
+        source.registerCorsConfiguration("/api/**", config);
         return source;
     }
 
