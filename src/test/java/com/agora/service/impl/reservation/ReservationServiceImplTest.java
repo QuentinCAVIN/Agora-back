@@ -15,6 +15,8 @@ import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
+import com.agora.service.auth.CurrentUserService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -51,8 +53,17 @@ class ReservationServiceImplTest {
     @Mock
     private GroupMembershipRepository groupMembershipRepository;
 
+    @Mock
+    private CurrentUserService currentUserService;
+
     @InjectMocks
     private ReservationServiceImpl reservationService;
+
+    @BeforeEach
+    void setUp() {
+        when(currentUserService.getAuthenticatedEmail(any(Authentication.class)))
+                .thenAnswer(invocation -> ((Authentication) invocation.getArgument(0)).getName());
+    }
 
     @Test
     void createReservation_shouldReturnResponseWhenValid() {

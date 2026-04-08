@@ -11,7 +11,6 @@ import com.agora.enums.reservation.DepositStatus;
 import com.agora.enums.reservation.ReservationStatus;
 import com.agora.exception.BusinessException;
 import com.agora.exception.ErrorCode;
-import com.agora.exception.auth.AuthRequiredException;
 import com.agora.exception.auth.AuthUserNotFoundException;
 import com.agora.exception.reservation.ReservationForbiddenNoGroupException;
 import com.agora.exception.reservation.SlotUnavailableException;
@@ -20,9 +19,9 @@ import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
+import com.agora.service.auth.CurrentUserService;
 import com.agora.service.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,11 +44,12 @@ public class ReservationServiceImpl implements ReservationService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository groupMembershipRepository;
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional
     public ReservationDetailResponseDto createReservation(CreateReservationRequestDto request, Authentication authentication) {
-        String email = extractAuthenticatedEmail(authentication);
+        String email = currentUserService.getAuthenticatedEmail(authentication);
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new AuthUserNotFoundException(email));
 
@@ -150,20 +150,5 @@ public class ReservationServiceImpl implements ReservationService {
         // Contrat MVP neutre:
         // - groupId null => réservation pour soi (pas de contrôle d'appartenance groupe demandé)
         // - groupId renseigné => contrôle d'appartenance effectué dans resolveGroupIfPresent
-    }
-
-    private String extractAuthenticatedEmail(Authentication authentication) {
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
-            throw new AuthRequiredException();
-        }
-
-        String email = authentication.getName();
-        if (email == null || email.isBlank()) {
-            throw new AuthRequiredException();
-        }
-
-        return email.trim();
     }
 }
