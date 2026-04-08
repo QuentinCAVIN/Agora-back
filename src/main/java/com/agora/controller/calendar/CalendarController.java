@@ -4,6 +4,8 @@ import com.agora.dto.response.calendar.CalendarResponseDto;
 import com.agora.service.calendar.CalendarService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,7 +34,11 @@ public class CalendarController {
             description = "Créneaux par ressource pour un mois donné (lecture). Paramètre optionnel resourceId pour filtrer."
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Calendrier calculé"),
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Calendrier calculé",
+                    content = @Content(schema = @Schema(implementation = CalendarResponseDto.class))
+            ),
             @ApiResponse(responseCode = "400", description = "Paramètres invalides"),
             @ApiResponse(responseCode = "404", description = "Ressource introuvable (resourceId)")
     })
