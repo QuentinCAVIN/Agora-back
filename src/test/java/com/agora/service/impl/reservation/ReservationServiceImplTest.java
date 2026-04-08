@@ -9,6 +9,8 @@ import com.agora.entity.user.User;
 import com.agora.enums.resource.ResourceType;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
+import com.agora.exception.BusinessException;
+import com.agora.exception.auth.AuthRequiredException;
 import com.agora.exception.reservation.ReservationForbiddenNoGroupException;
 import com.agora.exception.reservation.SlotUnavailableException;
 import com.agora.repository.group.GroupMembershipRepository;
@@ -319,5 +321,311 @@ class ReservationServiceImplTest {
                 ),
                 auth
         )).isInstanceOf(SlotUnavailableException.class);
+    }
+
+    @Test
+    void getReservationById_shouldReturnDetailWhenOwner() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+        user.setFirstName("Jean");
+        user.setLastName("Dupont");
+
+        Resource resource = Resource.builder()
+                .id(resourceId)
+                .name("Salle des fetes")
+                .resourceType(ResourceType.IMMOBILIER)
+                .capacity(250)
+                .depositAmountCents(15000)
+                .active(true)
+                .imageUrl("https://img")
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(user);
+        reservation.setResource(resource);
+        reservation.setReservationDate(LocalDate.of(2026, 4, 10));
+        reservation.setSlotStart(LocalTime.of(14, 0));
+        reservation.setSlotEnd(LocalTime.of(18, 0));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setPurpose("Reunion associative");
+        reservation.setCreatedAt(Instant.parse("2026-03-24T11:00:00Z"));
+        reservation.setGroup(null);
+        reservation.setRecurringGroupId(null);
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        var response = reservationService.getReservationById(reservationId, auth);
+
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(reservationId);
+        assertThat(response.resourceName()).isEqualTo("Salle des fetes");
+        assertThat(response.userName()).isEqualTo("Jean Dupont");
+        assertThat(response.status()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void getReservationById_shouldThrow404WhenNotFound() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.getReservationById(reservationId, auth))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void getReservationById_shouldThrow403WhenNotOwner() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User currentUser = new User();
+        currentUser.setId(userId);
+        currentUser.setEmail("user@example.com");
+
+        User ownerUser = new User();
+        ownerUser.setId(otherUserId);
+        ownerUser.setEmail("owner@example.com");
+
+        Resource resource = Resource.builder()
+                .id(resourceId)
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(ownerUser);
+        reservation.setResource(resource);
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(currentUser));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.getReservationById(reservationId, auth))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void cancelReservation_shouldUpdateStatusAndSetCancelledAt() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        Resource resource = Resource.builder()
+                .id(resourceId)
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(user);
+        reservation.setResource(resource);
+        reservation.setReservationDate(LocalDate.of(2026, 4, 10));
+        reservation.setSlotStart(LocalTime.of(14, 0));
+        reservation.setSlotEnd(LocalTime.of(18, 0));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setCancelledAt(null);
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+        when(reservationRepository.save(any(Reservation.class))).thenAnswer(invocation -> {
+            Reservation saved = invocation.getArgument(0);
+            return saved;
+        });
+
+        reservationService.cancelReservation(reservationId, auth);
+
+        verify(reservationRepository).save(any(Reservation.class));
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CANCELLED);
+        assertThat(reservation.getCancelledAt()).isNotNull();
+    }
+
+    @Test
+    void cancelReservation_shouldThrow400WhenAlreadyCancelled() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        Resource resource = Resource.builder()
+                .id(resourceId)
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(user);
+        reservation.setResource(resource);
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancelledAt(Instant.now());
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(reservationId, auth))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("déjà annulée");
+    }
+
+    @Test
+    void cancelReservation_shouldThrow400WhenRejected() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID resourceId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        Resource resource = Resource.builder()
+                .id(resourceId)
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(user);
+        reservation.setResource(resource);
+        reservation.setStatus(ReservationStatus.REJECTED);
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(reservationId, auth))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("rejetée");
+    }
+
+    @Test
+    void cancelReservation_shouldThrow403WhenNotOwner() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID otherUserId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User currentUser = new User();
+        currentUser.setId(userId);
+        currentUser.setEmail("user@example.com");
+
+        User ownerUser = new User();
+        ownerUser.setId(otherUserId);
+        ownerUser.setEmail("owner@example.com");
+
+        Resource resource = Resource.builder()
+                .id(UUID.randomUUID())
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(reservationId);
+        reservation.setUser(ownerUser);
+        reservation.setResource(resource);
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(currentUser));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(reservationId, auth))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Accès interdit");
+    }
+
+    @Test
+    void cancelReservation_shouldThrow404WhenNotFound() {
+        UUID reservationId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findById(reservationId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reservationService.cancelReservation(reservationId, auth))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("introuvable");
     }
 }

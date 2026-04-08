@@ -35,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -217,5 +218,107 @@ public class ReservationServiceImpl implements ReservationService {
                 "Aucune remise",
                 reservation.getCreatedAt()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReservationDetailResponseDto getReservationById(UUID reservationId, Authentication authentication) {
+
+        // 1. Auth utilisateur
+        String email = extractAuthenticatedEmail(authentication);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new AuthUserNotFoundException(email));
+
+        // 2. Recherche réservation
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.RESOURCE_NOT_FOUND, // (on pourra améliorer plus tard)
+                        "Réservation introuvable"
+                ));
+
+        // 3. Vérification ownership (MVP)
+        if (!reservation.getUser().getId().equals(user.getId())) {
+            throw new BusinessException(
+                    ErrorCode.RESERVATION_FORBIDDEN_NO_GROUP, // ⚠️ temporaire (voir remarque)
+                    "Accès interdit à cette réservation"
+            );
+        }
+
+        // 4. Mapping vers DTO (comme createReservation)
+        Resource resource = reservation.getResource();
+        int depositFull = (int) Math.round(resource.getDepositAmountCents());
+        int depositApplied = depositFull;
+
+        return new ReservationDetailResponseDto(
+                reservation.getId(),
+                resource.getName(),
+                resource.getResourceType(),
+                reservation.getReservationDate(),
+                reservation.getSlotStart(),
+                reservation.getSlotEnd(),
+                reservation.getStatus(),
+                DepositStatus.DEPOSIT_PENDING,
+                depositApplied,
+                depositFull,
+                "Aucune remise",
+                reservation.getCreatedAt(),
+                new ReservationResourceDto(
+                        resource.getId(),
+                        resource.getName(),
+                        resource.getResourceType(),
+                        resource.getCapacity(),
+                        depositFull,
+                        resource.getImageUrl()
+                ),
+                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName(),
+                reservation.getGroup() != null ? reservation.getGroup().getName() : null,
+                reservation.getPurpose(),
+                List.of(),
+                reservation.getRecurringGroupId()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void cancelReservation(UUID reservationId, Authentication authentication) {
+        // 1. Auth utilisateur
+        String email = extractAuthenticatedEmail(authentication);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new AuthUserNotFoundException(email));
+
+        // 2. Recherche réservation
+        Reservation reservation = reservationRepository.findById(reservationId)
+                .orElseThrow(() -> new BusinessException(
+                        ErrorCode.RESOURCE_NOT_FOUND,
+                        "Réservation introuvable"
+                ));
+
+        // 3. Vérification ownership
+        if (!reservation.getUser().getId().equals(user.getId())) {
+            throw new BusinessException(
+                    ErrorCode.RESERVATION_FORBIDDEN_NO_GROUP,
+                    "Accès interdit à cette réservation"
+            );
+        }
+
+        // 4. Vérification du statut : éviter double annulation ou annulation de rejet
+        if (ReservationStatus.CANCELLED.equals(reservation.getStatus())) {
+            throw new BusinessException(
+                    ErrorCode.RESOURCE_NOT_FOUND,
+                    "Cette réservation est déjà annulée"
+            );
+        }
+
+        if (ReservationStatus.REJECTED.equals(reservation.getStatus())) {
+            throw new BusinessException(
+                    ErrorCode.RESOURCE_NOT_FOUND,
+                    "Impossible d'annuler une réservation rejetée"
+            );
+        }
+
+        // 5. Passage en CANCELLED et horodatage
+        reservation.setStatus(ReservationStatus.CANCELLED);
+        reservation.setCancelledAt(Instant.now());
+        reservationRepository.save(reservation);
     }
 }
