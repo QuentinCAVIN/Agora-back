@@ -1,4 +1,4 @@
-package com.agora.service.auth;
+package com.agora.config;
 
 import com.agora.exception.auth.AuthRequiredException;
 import org.junit.jupiter.api.AfterEach;
@@ -15,9 +15,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class CurrentUserServiceTest {
+class SecurityUtilsTest {
 
-    private final CurrentUserService currentUserService = new CurrentUserService();
+    private final SecurityUtils securityUtils = new SecurityUtils();
 
     @AfterEach
     void tearDown() {
@@ -33,7 +33,7 @@ class CurrentUserServiceTest {
         );
         SecurityContextHolder.getContext().setAuthentication(auth);
 
-        assertThat(currentUserService.getAuthenticatedEmail()).isEqualTo("user@example.com");
+        assertThat(securityUtils.getAuthenticatedEmail()).isEqualTo("user@example.com");
     }
 
     @Test
@@ -45,7 +45,7 @@ class CurrentUserServiceTest {
         );
         SecurityContextHolder.getContext().setAuthentication(anonymous);
 
-        assertThatThrownBy(() -> currentUserService.getAuthenticatedEmail())
+        assertThatThrownBy(() -> securityUtils.getAuthenticatedEmail())
                 .isInstanceOf(AuthRequiredException.class);
     }
 
@@ -53,7 +53,7 @@ class CurrentUserServiceTest {
     void getAuthenticatedEmail_whenNullContext_throws() {
         SecurityContextHolder.clearContext();
 
-        assertThatThrownBy(() -> currentUserService.getAuthenticatedEmail())
+        assertThatThrownBy(() -> securityUtils.getAuthenticatedEmail())
                 .isInstanceOf(AuthRequiredException.class);
     }
 
@@ -65,7 +65,7 @@ class CurrentUserServiceTest {
                 List.of()
         );
 
-        assertThat(currentUserService.getAuthenticatedEmail(auth)).isEqualTo("x@y.fr");
+        assertThat(securityUtils.getAuthenticatedEmail(auth)).isEqualTo("x@y.fr");
     }
 
     @Test
@@ -76,7 +76,35 @@ class CurrentUserServiceTest {
                 List.of()
         );
 
-        assertThatThrownBy(() -> currentUserService.getAuthenticatedEmail(auth))
+        assertThatThrownBy(() -> securityUtils.getAuthenticatedEmail(auth))
                 .isInstanceOf(AuthRequiredException.class);
+    }
+
+    @Test
+    void tryGetAuthenticatedEmail_whenAnonymous_returnsEmpty() {
+        var anonymous = new AnonymousAuthenticationToken(
+                "key",
+                "anon",
+                List.of(new SimpleGrantedAuthority("ROLE_ANONYMOUS"))
+        );
+
+        assertThat(securityUtils.tryGetAuthenticatedEmail(anonymous)).isEmpty();
+    }
+
+    @Test
+    void hasAuthority_detectsRoleOnAuthentication() {
+        var auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "n/a",
+                List.of(new SimpleGrantedAuthority("ROLE_SECRETARY_ADMIN"))
+        );
+
+        assertThat(securityUtils.hasAuthority(auth, "ROLE_SECRETARY_ADMIN")).isTrue();
+        assertThat(securityUtils.hasAuthority(auth, "ROLE_USER")).isFalse();
+    }
+
+    @Test
+    void hasAuthority_nullAuthentication_isFalse() {
+        assertThat(securityUtils.hasAuthority((Authentication) null, "ROLE_SECRETARY_ADMIN")).isFalse();
     }
 }

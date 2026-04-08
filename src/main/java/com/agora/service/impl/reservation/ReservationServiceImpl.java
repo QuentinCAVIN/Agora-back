@@ -19,7 +19,7 @@ import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
-import com.agora.service.auth.CurrentUserService;
+import com.agora.config.SecurityUtils;
 import com.agora.service.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -44,12 +44,12 @@ public class ReservationServiceImpl implements ReservationService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository groupMembershipRepository;
-    private final CurrentUserService currentUserService;
+    private final SecurityUtils securityUtils;
 
     @Override
     @Transactional
     public ReservationDetailResponseDto createReservation(CreateReservationRequestDto request, Authentication authentication) {
-        String email = currentUserService.getAuthenticatedEmail(authentication);
+        String email = securityUtils.getAuthenticatedEmail(authentication);
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new AuthUserNotFoundException(email));
 

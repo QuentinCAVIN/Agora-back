@@ -44,7 +44,8 @@ public abstract class Auditable {
     }
 
     private String resolveUser() {
-        // TODO JWT : SecurityContextHolder.getContext().getAuthentication().getName()
+        // Pas d'injection JPA ici : prévoir plus tard un AuditorAware<String> branché sur
+        // com.agora.config.SecurityUtils.tryGetAuthenticatedEmail() pour remplir createdBy/updatedBy.
         return "SYSTEM";
     }
 }

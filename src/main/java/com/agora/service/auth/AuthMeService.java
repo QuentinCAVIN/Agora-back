@@ -5,6 +5,7 @@ import com.agora.dto.response.auth.UserGroupSummaryDto;
 import com.agora.entity.group.GroupMembership;
 import com.agora.entity.user.User;
 import com.agora.exception.auth.AuthUserNotFoundException;
+import com.agora.config.SecurityUtils;
 import com.agora.repository.group.GroupMembershipRepository;
 import com.agora.repository.user.UserRepository;
 import org.springframework.security.core.Authentication;
@@ -18,21 +19,21 @@ public class AuthMeService {
 
     private final UserRepository userRepository;
     private final GroupMembershipRepository groupMembershipRepository;
-    private final CurrentUserService currentUserService;
+    private final SecurityUtils securityUtils;
 
     public AuthMeService(
             UserRepository userRepository,
             GroupMembershipRepository groupMembershipRepository,
-            CurrentUserService currentUserService
+            SecurityUtils securityUtils
     ) {
         this.userRepository = userRepository;
         this.groupMembershipRepository = groupMembershipRepository;
-        this.currentUserService = currentUserService;
+        this.securityUtils = securityUtils;
     }
 
     @Transactional(readOnly = true)
     public AuthMeResponseDto getCurrentUserProfile(Authentication authentication) {
-        String authenticatedEmail = currentUserService.getAuthenticatedEmail(authentication);
+        String authenticatedEmail = securityUtils.getAuthenticatedEmail(authentication);
 
         User user = userRepository.findByEmailIgnoreCase(authenticatedEmail)
                 .orElseThrow(() -> new AuthUserNotFoundException(authenticatedEmail));
