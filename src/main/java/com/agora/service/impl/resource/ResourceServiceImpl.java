@@ -7,12 +7,14 @@ import com.agora.dto.response.resource.ResourceDto;
 import com.agora.dto.response.resource.TimeSlotDto;
 import com.agora.entity.resource.Resource;
 import com.agora.enums.resource.ResourceType;
+import com.agora.enums.reservation.ReservationStatus;
 import com.agora.exception.BusinessException;
 import com.agora.exception.ErrorCode;
 import com.agora.exception.resource.ResourceImmoCapacityViolationException;
 import com.agora.exception.resource.ResourceNotFountException;
 import com.agora.mapper.resource.ResourceMapper;
 import com.agora.repository.resource.ResourceRepository;
+import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceSpecification;
 import com.agora.service.resource.ResourceService;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -31,7 +35,17 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ResourceServiceImpl implements ResourceService {
 
+    private static final List<ReservationStatus> BLOCKING_STATUSES = List.of(
+            ReservationStatus.PENDING_VALIDATION,
+            ReservationStatus.CONFIRMED,
+            ReservationStatus.PENDING_DOCUMENT
+    );
+    private static final LocalTime DAY_START = LocalTime.of(8, 0);
+    private static final LocalTime DAY_END = LocalTime.of(18, 0);
+    private static final int SLOT_DURATION_MINUTES = 60;
+
     private final ResourceRepository resourceRepository;
+    private final ReservationRepository reservationRepository;
     private final ResourceMapper resourceMapper;
 
 
@@ -89,19 +103,40 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Override
     public List<TimeSlotDto> getSlots(UUID resourceId, LocalDate date) {
-
+        // 1. Vérifier que la ressource existe
         resourceRepository.findById(resourceId)
                 .orElseThrow(() -> new BusinessException(
                         ErrorCode.RESOURCE_NOT_FOUND,
                         "Ressource introuvable"
                 ));
 
-        // TODO brancher sur réservation réelle
-        return List.of(
-                new TimeSlotDto("08:00", "09:00", true),
-                new TimeSlotDto("09:00", "10:00", false),
-                new TimeSlotDto("10:00", "11:00", true)
-        );
+        // 2. Générer les créneaux de 60 min de 08:00 à 18:00
+        List<TimeSlotDto> slots = new ArrayList<>();
+        LocalTime currentStart = DAY_START;
+
+        while (currentStart.isBefore(DAY_END)) {
+            LocalTime currentEnd = currentStart.plusMinutes(SLOT_DURATION_MINUTES);
+
+            // 3. Vérifier chevauchement avec réservations actives
+            boolean isAvailable = !reservationRepository.existsOverlappingSlot(
+                    resourceId,
+                    date,
+                    currentStart,
+                    currentEnd,
+                    BLOCKING_STATUSES
+            );
+
+            // 4. Créer le slot avec le format HH:mm du contrat API
+            slots.add(new TimeSlotDto(
+                    String.format("%02d:%02d", currentStart.getHour(), currentStart.getMinute()),
+                    String.format("%02d:%02d", currentEnd.getHour(), currentEnd.getMinute()),
+                    isAvailable
+            ));
+
+            currentStart = currentEnd;
+        }
+
+        return slots;
     }
 
 

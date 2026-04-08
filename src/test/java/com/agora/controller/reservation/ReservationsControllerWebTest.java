@@ -315,7 +315,7 @@ class ReservationsControllerWebTest {
 
         mockMvc.perform(get("/api/reservations/{reservationId}", reservationId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("GEN-003"));
     }
 
     @Test
@@ -341,7 +341,7 @@ class ReservationsControllerWebTest {
 
         mockMvc.perform(delete("/api/reservations/{reservationId}", reservationId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("GEN-003"));
     }
 
     @Test
@@ -371,7 +371,7 @@ class ReservationsControllerWebTest {
 
         mockMvc.perform(delete("/api/reservations/{reservationId}", reservationId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("GEN-003"));
     }
 
     @Test
@@ -386,6 +386,6 @@ class ReservationsControllerWebTest {
 
         mockMvc.perform(delete("/api/reservations/{reservationId}", reservationId))
                 .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"));
+                .andExpect(jsonPath("$.code").value("GEN-003"));
     }
 }
