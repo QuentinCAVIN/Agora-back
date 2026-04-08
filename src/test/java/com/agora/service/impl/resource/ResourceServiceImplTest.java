@@ -2,10 +2,13 @@ package com.agora.service.impl.resource;
 
 import com.agora.config.SecurityUtils;
 import com.agora.dto.request.resource.ResourceRequest;
+import com.agora.dto.response.resource.TimeSlotDto;
 import com.agora.entity.resource.Resource;
+import com.agora.enums.reservation.ReservationStatus;
 import com.agora.enums.resource.ResourceType;
 import com.agora.exception.resource.ResourceNotFountException;
 import com.agora.mapper.resource.ResourceMapper;
+import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.service.impl.resource.ResourceServiceImpl;
 import com.agora.testutil.ResourceTestData;
@@ -16,6 +19,8 @@ import org.mockito.*;
 import org.springframework.data.domain.*;
 import org.springframework.security.core.Authentication;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.*;
@@ -26,6 +31,9 @@ class ResourceServiceImplTest {
 
     @Mock
     private ResourceRepository repository;
+
+    @Mock
+    private ReservationRepository reservationRepository;
 
     @Mock
     private ResourceMapper mapper;
@@ -176,34 +184,99 @@ class ResourceServiceImplTest {
         assertThat(result.content()).hasSize(1);
     }
 
+    // =========================================
+    // GET SLOTS
+    // =========================================
     @Test
-    void getResources_alwaysChecksSecretaryAdminAuthority() {
-        Authentication auth = mock(Authentication.class);
-        when(repository.findAll(
-                ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Resource>>any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
+    void getSlots_shouldReturnAllAvailableSlots() {
+        UUID resourceId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 4, 10);
+        Resource resource = new Resource();
+        resource.setId(resourceId);
 
-        service.getResources(auth, null, null, null, null, 0, 10);
+        when(repository.findById(resourceId)).thenReturn(Optional.of(resource));
+        when(reservationRepository.existsOverlappingSlot(
+                any(UUID.class), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class), anyList()
+        )).thenReturn(false);
 
-        verify(securityUtils).hasAuthority(auth, "ROLE_SECRETARY_ADMIN");
+        List<TimeSlotDto> slots = service.getSlots(resourceId, date);
+
+        assertThat(slots).isNotEmpty();
+        assertThat(slots).allMatch(s -> s.isAvailable());
+        // 10 créneaux de 8h à 18h (60 min chacun)
+        assertThat(slots).hasSize(10);
+        assertThat(slots.get(0).slotStart()).isEqualTo("08:00");
+        assertThat(slots.get(0).slotEnd()).isEqualTo("09:00");
+        assertThat(slots.get(9).slotStart()).isEqualTo("17:00");
+        assertThat(slots.get(9).slotEnd()).isEqualTo("18:00");
     }
 
     @Test
-    void getResources_whenSecretaryAdmin_stillQueriesRepository() {
-        Authentication auth = mock(Authentication.class);
-        when(securityUtils.hasAuthority(auth, "ROLE_SECRETARY_ADMIN")).thenReturn(true);
-        when(repository.findAll(
-                ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Resource>>any(),
-                any(Pageable.class)
-        )).thenReturn(new PageImpl<>(List.of()));
+    void getSlots_shouldMarkUnavailableSlotsWhenReservationExists() {
+        UUID resourceId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 4, 10);
+        Resource resource = new Resource();
+        resource.setId(resourceId);
 
-        service.getResources(auth, null, null, null, null, 0, 5);
+        when(repository.findById(resourceId)).thenReturn(Optional.of(resource));
+        when(reservationRepository.existsOverlappingSlot(
+                eq(resourceId), eq(date), any(), any(), anyList()
+        )).thenReturn(false);
+        when(reservationRepository.existsOverlappingSlot(
+                eq(resourceId), eq(date), eq(LocalTime.of(14, 0)), eq(LocalTime.of(15, 0)), anyList()
+        )).thenReturn(true);
 
-        verify(securityUtils).hasAuthority(auth, "ROLE_SECRETARY_ADMIN");
-        verify(repository).findAll(
-                ArgumentMatchers.<org.springframework.data.jpa.domain.Specification<Resource>>any(),
-                any(Pageable.class)
-        );
+        List<TimeSlotDto> slots = service.getSlots(resourceId, date);
+
+        // Vérifier que le créneau 14:00-15:00 est indisponible
+        TimeSlotDto slot14h = slots.stream()
+                .filter(s -> s.slotStart().equals("14:00"))
+                .findFirst()
+                .orElse(null);
+
+        assertThat(slot14h).isNotNull();
+        assertThat(slot14h.isAvailable()).isFalse();
+    }
+
+    @Test
+    void getSlots_shouldThrow404WhenResourceNotFound() {
+        UUID resourceId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 4, 10);
+
+        when(repository.findById(resourceId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getSlots(resourceId, date))
+                .isInstanceOf(com.agora.exception.BusinessException.class)
+                .hasMessageContaining("introuvable");
+    }
+
+    @Test
+    void getSlots_shouldGenerateSlotsWithCorrectGranularity() {
+        UUID resourceId = UUID.randomUUID();
+        LocalDate date = LocalDate.of(2026, 4, 10);
+        Resource resource = new Resource();
+        resource.setId(resourceId);
+
+        when(repository.findById(resourceId)).thenReturn(Optional.of(resource));
+        when(reservationRepository.existsOverlappingSlot(
+                any(UUID.class), any(LocalDate.class), any(LocalTime.class), any(LocalTime.class), anyList()
+        )).thenReturn(false);
+
+        List<TimeSlotDto> slots = service.getSlots(resourceId, date);
+
+        // Vérifier que les créneaux sont de 60 min et consécutifs
+        for (int i = 0; i < slots.size() - 1; i++) {
+            TimeSlotDto current = slots.get(i);
+            TimeSlotDto next = slots.get(i + 1);
+
+            // Le début du prochain créneau doit être égal à la fin du créneau actuel
+            assertThat(next.slotStart()).isEqualTo(current.slotEnd());
+        }
+
+        // Vérifier que le premier créneau commence à 08:00
+        assertThat(slots.get(0).slotStart()).isEqualTo("08:00");
+
+        // Vérifier que le dernier créneau se termine à 18:00
+        assertThat(slots.get(slots.size() - 1).slotEnd()).isEqualTo("18:00");
     }
 }

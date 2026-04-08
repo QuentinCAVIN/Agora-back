@@ -16,15 +16,9 @@ import java.util.UUID;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID> {
 
-    Page<Reservation> findByUser_IdOrderByReservationDateDescCreatedAtDesc(UUID userId, Pageable pageable);
+    Page<Reservation> findByUser_Id(UUID userId, Pageable pageable);
 
-    Optional<Reservation> findByIdAndUser_Id(UUID id, UUID userId);
-
-    boolean existsByResource_IdAndReservationDateAndSlotStart(
-            UUID resourceId,
-            LocalDate reservationDate,
-            LocalTime slotStart
-    );
+    Page<Reservation> findByUser_IdAndStatus(UUID userId, ReservationStatus status, Pageable pageable);
 
     @Query("""
             select (count(r) > 0)
