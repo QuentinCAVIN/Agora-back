@@ -1,16 +1,21 @@
 package com.agora.controller.reservation;
 
 import com.agora.dto.request.reservation.CreateReservationRequestDto;
+import com.agora.dto.response.common.PagedResponse;
 import com.agora.dto.response.reservation.ReservationDetailResponseDto;
+import com.agora.dto.response.reservation.ReservationSummaryResponseDto;
+import com.agora.enums.reservation.ReservationStatus;
 import com.agora.service.reservation.ReservationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -19,6 +24,16 @@ import org.springframework.web.bind.annotation.RestController;
 public class ReservationsController {
 
     private final ReservationService reservationService;
+
+    @GetMapping
+    public PagedResponse<ReservationSummaryResponseDto> getMyReservations(
+            Authentication authentication,
+            @RequestParam(required = false) ReservationStatus status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        return reservationService.getMyReservations(authentication, status, page, size);
+    }
 
     @PostMapping
     public ResponseEntity<ReservationDetailResponseDto> createReservation(

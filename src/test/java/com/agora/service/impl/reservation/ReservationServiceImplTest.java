@@ -1,6 +1,7 @@
 package com.agora.service.impl.reservation;
 
 import com.agora.dto.request.reservation.CreateReservationRequestDto;
+import com.agora.enums.reservation.ReservationStatus;
 import com.agora.entity.group.Group;
 import com.agora.entity.reservation.Reservation;
 import com.agora.entity.resource.Resource;
@@ -20,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -35,6 +38,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -53,6 +59,122 @@ class ReservationServiceImplTest {
 
     @InjectMocks
     private ReservationServiceImpl reservationService;
+
+    @Test
+    void getMyReservations_shouldFilterByAuthenticatedUserAndMapSummary() {
+        UUID userId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        Resource resource = Resource.builder()
+                .id(UUID.randomUUID())
+                .name("Salle")
+                .resourceType(ResourceType.IMMOBILIER)
+                .depositAmountCents(15000)
+                .active(true)
+                .build();
+
+        Reservation reservation = new Reservation();
+        reservation.setId(UUID.randomUUID());
+        reservation.setUser(user);
+        reservation.setResource(resource);
+        reservation.setReservationDate(LocalDate.of(2026, 4, 10));
+        reservation.setSlotStart(LocalTime.of(14, 0));
+        reservation.setSlotEnd(LocalTime.of(18, 0));
+        reservation.setStatus(ReservationStatus.CONFIRMED);
+        reservation.setCreatedAt(Instant.parse("2026-03-24T11:00:00Z"));
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findByUser_Id(eq(userId), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(reservation), PageRequest.of(0, 20), 1));
+
+        var result = reservationService.getMyReservations(auth, null, 0, 20);
+
+        assertThat(result.content()).hasSize(1);
+        assertThat(result.content().get(0).resourceName()).isEqualTo("Salle");
+        assertThat(result.content().get(0).depositAmountFullCents()).isEqualTo(15000);
+        assertThat(result.totalElements()).isEqualTo(1);
+        verify(reservationRepository).findByUser_Id(eq(userId), any(PageRequest.class));
+        verify(reservationRepository, never()).findByUser_IdAndStatus(any(), any(), any(PageRequest.class));
+    }
+
+    @Test
+    void getMyReservations_shouldApplyStatusFilterWhenProvided() {
+        UUID userId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findByUser_IdAndStatus(eq(userId), eq(ReservationStatus.CONFIRMED), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 20), 0));
+
+        var result = reservationService.getMyReservations(auth, ReservationStatus.CONFIRMED, 0, 20);
+
+        assertThat(result.content()).isEmpty();
+        verify(reservationRepository).findByUser_IdAndStatus(eq(userId), eq(ReservationStatus.CONFIRMED), any(PageRequest.class));
+        verify(reservationRepository, never()).findByUser_Id(any(), any(PageRequest.class));
+    }
+
+    @Test
+    void getMyReservations_shouldCapPageSizeTo100() {
+        UUID userId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(userId);
+        user.setEmail("user@example.com");
+
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+        when(reservationRepository.findByUser_Id(eq(userId), any(PageRequest.class)))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 100), 0));
+
+        var result = reservationService.getMyReservations(auth, null, 0, 500);
+
+        assertThat(result.size()).isEqualTo(100);
+        verify(reservationRepository).findByUser_Id(eq(userId), eq(PageRequest.of(
+                0,
+                100,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
+                        .and(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id"))
+        )));
+    }
+
+    @Test
+    void getMyReservations_shouldFailFastWhenPageOrSizeInvalid() {
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        User user = new User();
+        user.setId(UUID.randomUUID());
+        user.setEmail("user@example.com");
+        when(userRepository.findByEmailIgnoreCase("user@example.com")).thenReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> reservationService.getMyReservations(auth, null, -1, 20))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> reservationService.getMyReservations(auth, null, 0, 0))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 
     @Test
     void createReservation_shouldReturnResponseWhenValid() {
@@ -87,7 +209,7 @@ class ReservationServiceImplTest {
         saved.setReservationDate(LocalDate.of(2026, 4, 10));
         saved.setSlotStart(LocalTime.of(14, 0));
         saved.setSlotEnd(LocalTime.of(18, 0));
-        saved.setStatus(com.agora.enums.reservation.ReservationStatus.CONFIRMED);
+        saved.setStatus(ReservationStatus.CONFIRMED);
         saved.setPurpose("Reunion");
         saved.setCreatedAt(Instant.parse("2026-03-24T11:00:00Z"));
 

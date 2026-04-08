@@ -1,8 +1,10 @@
 package com.agora.service.impl.reservation;
 
 import com.agora.dto.request.reservation.CreateReservationRequestDto;
+import com.agora.dto.response.common.PagedResponse;
 import com.agora.dto.response.reservation.ReservationDetailResponseDto;
 import com.agora.dto.response.reservation.ReservationResourceDto;
+import com.agora.dto.response.reservation.ReservationSummaryResponseDto;
 import com.agora.entity.group.Group;
 import com.agora.entity.reservation.Reservation;
 import com.agora.entity.resource.Resource;
@@ -24,6 +26,10 @@ import com.agora.service.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +45,7 @@ public class ReservationServiceImpl implements ReservationService {
             ReservationStatus.CONFIRMED,
             ReservationStatus.PENDING_DOCUMENT
     );
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final ReservationRepository reservationRepository;
     private final ResourceRepository resourceRepository;
@@ -124,6 +131,32 @@ public class ReservationServiceImpl implements ReservationService {
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PagedResponse<ReservationSummaryResponseDto> getMyReservations(
+            Authentication authentication,
+            ReservationStatus status,
+            int page,
+            int size
+    ) {
+        String email = extractAuthenticatedEmail(authentication);
+        User user = userRepository.findByEmailIgnoreCase(email)
+                .orElseThrow(() -> new AuthUserNotFoundException(email));
+
+        Pageable pageable = PageRequest.of(
+                page,
+                Math.min(size, MAX_PAGE_SIZE),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+                        .and(Sort.by(Sort.Direction.DESC, "id"))
+        );
+
+        Page<Reservation> reservationsPage = status == null
+                ? reservationRepository.findByUser_Id(user.getId(), pageable)
+                : reservationRepository.findByUser_IdAndStatus(user.getId(), status, pageable);
+
+        return PagedResponse.from(reservationsPage.map(this::toSummaryResponse));
+    }
+
     private Group resolveGroupIfPresent(UUID groupId, UUID userId) {
         if (groupId == null) {
             return null;
@@ -165,5 +198,24 @@ public class ReservationServiceImpl implements ReservationService {
         }
 
         return email.trim();
+    }
+
+    private ReservationSummaryResponseDto toSummaryResponse(Reservation reservation) {
+        int depositFull = (int) Math.round(reservation.getResource().getDepositAmountCents());
+        int depositApplied = depositFull;
+        return new ReservationSummaryResponseDto(
+                reservation.getId(),
+                reservation.getResource().getName(),
+                reservation.getResource().getResourceType(),
+                reservation.getReservationDate(),
+                reservation.getSlotStart(),
+                reservation.getSlotEnd(),
+                reservation.getStatus(),
+                DepositStatus.DEPOSIT_PENDING,
+                depositApplied,
+                depositFull,
+                "Aucune remise",
+                reservation.getCreatedAt()
+        );
     }
 }

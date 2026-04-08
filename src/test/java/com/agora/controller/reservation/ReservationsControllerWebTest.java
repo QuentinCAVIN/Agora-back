@@ -2,8 +2,10 @@ package com.agora.controller.reservation;
 
 import com.agora.config.SecurityConfig;
 import com.agora.dto.request.reservation.CreateReservationRequestDto;
+import com.agora.dto.response.common.PagedResponse;
 import com.agora.dto.response.reservation.ReservationDetailResponseDto;
 import com.agora.dto.response.reservation.ReservationResourceDto;
+import com.agora.dto.response.reservation.ReservationSummaryResponseDto;
 import com.agora.enums.reservation.DepositStatus;
 import com.agora.enums.reservation.ReservationStatus;
 import com.agora.enums.resource.ResourceType;
@@ -30,6 +32,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -50,6 +53,67 @@ class ReservationsControllerWebTest {
 
     @MockBean
     private JwtService jwtService;
+
+    @Test
+    @WithMockUser(username = "user@example.com")
+    void getMyReservations_shouldReturn200AndPagedContent() throws Exception {
+        ReservationSummaryResponseDto item = new ReservationSummaryResponseDto(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "Salle des fetes",
+                ResourceType.IMMOBILIER,
+                LocalDate.of(2026, 4, 10),
+                LocalTime.of(14, 0),
+                LocalTime.of(18, 0),
+                ReservationStatus.CONFIRMED,
+                DepositStatus.DEPOSIT_PENDING,
+                7500,
+                15000,
+                "Reduction 50%",
+                Instant.parse("2026-03-24T11:00:00Z")
+        );
+        PagedResponse<ReservationSummaryResponseDto> response = new PagedResponse<>(
+                List.of(item),
+                1L,
+                1,
+                0,
+                20
+        );
+        when(reservationService.getMyReservations(any(), any(), any(Integer.class), any(Integer.class))).thenReturn(response);
+
+        mockMvc.perform(get("/api/reservations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.content[0].id").value("11111111-1111-1111-1111-111111111111"))
+                .andExpect(jsonPath("$.content[0].resourceName").value("Salle des fetes"))
+                .andExpect(jsonPath("$.content[0].slotStart").value("14:00"))
+                .andExpect(jsonPath("$.content[0].slotEnd").value("18:00"))
+                .andExpect(jsonPath("$.content[0].status").value("CONFIRMED"))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(20));
+    }
+
+    @Test
+    @WithMockUser(username = "user@example.com")
+    void getMyReservations_shouldHandleStatusFilter() throws Exception {
+        PagedResponse<ReservationSummaryResponseDto> response = new PagedResponse<>(
+                List.of(),
+                0L,
+                0,
+                0,
+                20
+        );
+        when(reservationService.getMyReservations(any(), any(), any(Integer.class), any(Integer.class))).thenReturn(response);
+
+        mockMvc.perform(get("/api/reservations")
+                        .param("status", "CONFIRMED")
+                        .param("page", "0")
+                        .param("size", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
 
     @Test
     @WithMockUser(username = "user@example.com")
