@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 import java.time.Instant;
+import java.time.LocalDate;
 
 @Service
 @RequiredArgsConstructor
@@ -57,6 +58,19 @@ public class ReservationServiceImpl implements ReservationService {
     @Override
     @Transactional
     public ReservationDetailResponseDto createReservation(CreateReservationRequestDto request, Authentication authentication) {
+        // Validate input dates and times
+        if (request.slotStart() == null || request.slotEnd() == null) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Les heures de début et de fin sont obligatoires");
+        }
+
+        if (request.slotStart().compareTo(request.slotEnd()) >= 0) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "L'heure de début doit être antérieure à l'heure de fin");
+        }
+
+        if (request.date() != null && request.date().isBefore(LocalDate.now())) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "La date de réservation ne peut pas être dans le passé");
+        }
+
         String email = extractAuthenticatedEmail(authentication);
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new AuthUserNotFoundException(email));

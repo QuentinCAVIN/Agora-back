@@ -324,6 +324,108 @@ class ReservationServiceImplTest {
     }
 
     @Test
+    void createReservation_shouldThrow400WhenSlotStartAfterOrEqualSlotEnd() {
+        UUID resourceId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        // Case: start == end
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequestDto(
+                        resourceId,
+                        LocalDate.of(2026, 4, 10),
+                        LocalTime.of(14, 0),
+                        LocalTime.of(14, 0),
+                        "Reunion",
+                        null
+                ),
+                auth
+        )).isInstanceOf(BusinessException.class);
+
+        // Case: start > end
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequestDto(
+                        resourceId,
+                        LocalDate.of(2026, 4, 10),
+                        LocalTime.of(18, 0),
+                        LocalTime.of(14, 0),
+                        "Reunion",
+                        null
+                ),
+                auth
+        )).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void createReservation_shouldThrow400WhenSlotStartIsNull() {
+        UUID resourceId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequestDto(
+                        resourceId,
+                        LocalDate.of(2026, 4, 10),
+                        null,
+                        LocalTime.of(18, 0),
+                        "Reunion",
+                        null
+                ),
+                auth
+        )).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void createReservation_shouldThrow400WhenSlotEndIsNull() {
+        UUID resourceId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequestDto(
+                        resourceId,
+                        LocalDate.of(2026, 4, 10),
+                        LocalTime.of(14, 0),
+                        null,
+                        "Reunion",
+                        null
+                ),
+                auth
+        )).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void createReservation_shouldThrow400WhenReservationDateIsInThePast() {
+        UUID resourceId = UUID.randomUUID();
+        Authentication auth = new UsernamePasswordAuthenticationToken(
+                "user@example.com",
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_USER"))
+        );
+
+        assertThatThrownBy(() -> reservationService.createReservation(
+                new CreateReservationRequestDto(
+                        resourceId,
+                        LocalDate.of(2020, 1, 1),
+                        LocalTime.of(14, 0),
+                        LocalTime.of(18, 0),
+                        "Reunion",
+                        null
+                ),
+                auth
+        )).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     void getReservationById_shouldReturnDetailWhenOwner() {
         UUID reservationId = UUID.randomUUID();
         UUID userId = UUID.randomUUID();
