@@ -79,14 +79,14 @@ class SecurityRealIntegrationTest {
     @Test
     void getMe_withoutToken_shouldFail() throws Exception {
         mockMvc.perform(get(AUTH_ME_URL))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
     void getMe_withInvalidToken_shouldFail() throws Exception {
         mockMvc.perform(get(AUTH_ME_URL)
                         .header("Authorization", "Bearer invalid.jwt.token"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

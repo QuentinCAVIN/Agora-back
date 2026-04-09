@@ -3,6 +3,7 @@ package com.agora.controller.auth;
 import com.agora.config.SecurityConfig;
 import com.agora.dto.response.auth.AuthMeResponseDto;
 import com.agora.dto.response.auth.UserGroupSummaryDto;
+import com.agora.entity.user.ERole;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
 import com.agora.service.auth.AuthCookieService;
@@ -59,6 +60,7 @@ class AuthControllerMeWebTest {
                 AccountType.AUTONOMOUS,
                 AccountStatus.ACTIVE,
                 "0600000000",
+                List.of(ERole.CITIZEN),
                 List.of(new UserGroupSummaryDto(
                         UUID.fromString("22222222-2222-2222-2222-222222222222"),
                         "Public",
@@ -79,6 +81,6 @@ class AuthControllerMeWebTest {
     @Test
     void me_shouldBeRejectedWhenUnauthenticated() throws Exception {
         mockMvc.perform(get("/api/auth/me"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isUnauthorized());
     }
 }

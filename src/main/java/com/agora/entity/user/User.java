@@ -1,13 +1,9 @@
 package com.agora.entity.user;
 
+import com.agora.entity.common.Auditable;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -16,6 +12,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.hibernate.annotations.UuidGenerator;
 
 import java.time.Instant;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -23,7 +21,8 @@ import java.util.UUID;
 @Getter
 @Setter
 @NoArgsConstructor
-public class User {
+
+public class User extends Auditable {
 
     @Id
     @UuidGenerator
@@ -59,11 +58,14 @@ public class User {
     @Column(name = "notes_admin", columnDefinition = "TEXT")
     private String notesAdmin;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    @ElementCollection
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "roles", nullable = false)
+    private Set<ERole> roles = new HashSet<>();
 
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    public void addRole(ERole role) {
+        if(this.roles == null) this.roles = new HashSet<>();
+        this.roles.add(role);
+    }
 }

@@ -63,7 +63,10 @@ class ResourcesVisibilityIntegrationTest {
 
     @Test
     void getResources_admin_shouldSeeActiveAndInactive() throws Exception {
-        String token = testJwtUtil.createToken("admin@agora.local", java.util.List.of("ROLE_SECRETARY_ADMIN"));
+        String token = testJwtUtil.createToken(
+                "admin@agora.local",
+                java.util.List.of("ROLE_SECRETARY_ADMIN", "ROLE_SUPERADMIN")
+        );
 
         mockMvc.perform(get("/api/resources?page=0&size=50")
                         .header("Authorization", "Bearer " + token))

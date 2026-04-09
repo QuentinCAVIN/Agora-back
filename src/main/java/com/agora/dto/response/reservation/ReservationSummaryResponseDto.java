@@ -24,6 +24,37 @@ public record ReservationSummaryResponseDto(
         int depositAmountCents,
         int depositAmountFullCents,
         String discountLabel,
-        Instant createdAt
+        Instant createdAt,
+        String userName
 ) {
+    public ReservationSummaryResponseDto(
+            UUID id,
+            String resourceName,
+            ResourceType resourceType,
+            LocalDate date,
+            LocalTime slotStart,
+            LocalTime slotEnd,
+            ReservationStatus status,
+            DepositStatus depositStatus,
+            int depositAmountCents,
+            int depositAmountFullCents,
+            String discountLabel,
+            Instant createdAt
+    ) {
+        this(
+                id,
+                resourceName,
+                resourceType,
+                date,
+                slotStart,
+                slotEnd,
+                status,
+                depositStatus,
+                depositAmountCents,
+                depositAmountFullCents,
+                discountLabel,
+                createdAt,
+                null
+        );
+    }
 }

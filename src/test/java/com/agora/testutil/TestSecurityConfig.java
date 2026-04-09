@@ -55,7 +55,10 @@ public class TestSecurityConfig {
                 var auth = new UsernamePasswordAuthenticationToken(
                         "test-admin",
                         "N/A",
-                        List.of(new SimpleGrantedAuthority("ROLE_SECRETARY_ADMIN"))
+                        List.of(
+                                new SimpleGrantedAuthority("ROLE_SECRETARY_ADMIN"),
+                                new SimpleGrantedAuthority("ROLE_SUPERADMIN")
+                        )
                 );
                 SecurityContextHolder.getContext().setAuthentication(auth);
                 try {

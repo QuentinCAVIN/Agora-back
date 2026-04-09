@@ -1,5 +1,6 @@
 package com.agora.dto.response.auth;
 
+import com.agora.entity.user.ERole;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,7 @@ public class AuthMeResponseDto {
     private final AccountType accountType;
     private final AccountStatus status;
     private final String phone;
+    private final List<ERole> roles;
     private final List<UserGroupSummaryDto> groups;
     private final Instant createdAt;
 }

@@ -50,6 +50,7 @@ public class AuthMeService {
                 user.getAccountType(),
                 user.getAccountStatus(),
                 user.getPhone(),
+                user.getRoles().stream().toList(),
                 groups,
                 user.getCreatedAt()
         );

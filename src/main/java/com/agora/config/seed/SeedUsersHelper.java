@@ -1,5 +1,6 @@
 package com.agora.config.seed;
 
+import com.agora.entity.user.ERole;
 import com.agora.entity.user.User;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
@@ -22,7 +23,9 @@ final class SeedUsersHelper {
                 "Admin",
                 "Agora",
                 "+221700000000",
-                SeedConstants.DEFAULT_PASSWORD
+                SeedConstants.DEFAULT_PASSWORD,
+                ERole.SECRETARY_ADMIN,
+                ERole.SUPERADMIN
         );
 
         User user = ensureAutonomousUser(
@@ -30,7 +33,8 @@ final class SeedUsersHelper {
                 "Jean",
                 "Dupont",
                 "0612345678",
-                SeedConstants.DEFAULT_PASSWORD
+                SeedConstants.DEFAULT_PASSWORD,
+                ERole.CITIZEN
         );
 
         User staff = ensureAutonomousUser(
@@ -38,7 +42,8 @@ final class SeedUsersHelper {
                 "Marie",
                 "Secrétaire",
                 "0600000001",
-                SeedConstants.DEFAULT_PASSWORD
+                SeedConstants.DEFAULT_PASSWORD,
+                ERole.CITIZEN
         );
 
         User assocManager = ensureAutonomousUser(
@@ -46,7 +51,8 @@ final class SeedUsersHelper {
                 "Sophie",
                 "Bernard",
                 "0600000002",
-                SeedConstants.DEFAULT_PASSWORD
+                SeedConstants.DEFAULT_PASSWORD,
+                ERole.SECRETARY_ADMIN
         );
 
         User tutored = ensureTutoredUser(
@@ -65,7 +71,8 @@ final class SeedUsersHelper {
             String firstName,
             String lastName,
             String phone,
-            String rawPassword
+            String rawPassword,
+            ERole... roleNames
     ) {
         User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
@@ -79,6 +86,9 @@ final class SeedUsersHelper {
         user.setPhone(phone);
         user.setAccountType(AccountType.AUTONOMOUS);
         user.setAccountStatus(AccountStatus.ACTIVE);
+        for (ERole roleName : roleNames) {
+            user.addRole(roleName);
+        }
 
         // internalRef/notesAdmin uniquement pour tutored
         user.setInternalRef(null);

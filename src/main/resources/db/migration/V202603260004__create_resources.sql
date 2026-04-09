@@ -57,7 +57,7 @@ VALUES
     TRUE,
     '[]',
     5000,
-    'https://www.team-business-centers.com/wp-content/uploads/2021/07/Location-salle-de-r%C3%A9union-design-Paris-8-570x500.jpg,
+    'https://www.team-business-centers.com/wp-content/uploads/2021/07/Location-salle-de-r%C3%A9union-design-Paris-8-570x500.jpg',
     NOW(),
     NOW(),
     'seed',

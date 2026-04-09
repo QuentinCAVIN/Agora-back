@@ -232,7 +232,8 @@ public class ReservationServiceImpl implements ReservationService {
                 depositApplied,
                 depositFull,
                 "Aucune remise",
-                reservation.getCreatedAt()
+                reservation.getCreatedAt(),
+                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName()
         );
     }
 

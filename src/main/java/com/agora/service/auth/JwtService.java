@@ -1,5 +1,6 @@
 package com.agora.service.auth;
 
+import com.agora.entity.user.ERole;
 import com.agora.entity.user.User;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -54,10 +56,7 @@ public class JwtService {
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
         Instant exp = now.plusSeconds(expiresInSeconds);
-
-        List<String> roles = (user.getEmail() != null && user.getEmail().equalsIgnoreCase(adminEmail))
-                ? List.of("ROLE_SECRETARY_ADMIN")
-                : List.of();
+        List<String> roles = resolveRoles(user);
 
         return Jwts.builder()
                 .setSubject(user.getEmail())
@@ -122,5 +121,29 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    private List<String> resolveRoles(User user) {
+        LinkedHashSet<String> roles = new LinkedHashSet<>();
+
+        if (user.getRoles() != null) {
+            if (user.getRoles().contains(ERole.SECRETARY_ADMIN) || user.getRoles().contains(ERole.DELEGATE_ADMIN)) {
+                roles.add("ROLE_SECRETARY_ADMIN");
+            }
+            if (user.getRoles().contains(ERole.SUPERADMIN)) {
+                roles.add("ROLE_SUPERADMIN");
+            }
+        }
+
+        if (isAdminEmail(user)) {
+            roles.add("ROLE_SECRETARY_ADMIN");
+            roles.add("ROLE_SUPERADMIN");
+        }
+
+        return List.copyOf(roles);
+    }
+
+    private boolean isAdminEmail(User user) {
+        return user.getEmail() != null && user.getEmail().equalsIgnoreCase(adminEmail);
     }
 }

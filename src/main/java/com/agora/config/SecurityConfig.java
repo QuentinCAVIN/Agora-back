@@ -63,10 +63,10 @@ public class SecurityConfig {
 
         http.exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
-                    response.setStatus(403);
+                    response.setStatus(ErrorCode.AUTH_REQUIRED.status().value());
                     response.setContentType(MediaType.APPLICATION_JSON_VALUE);
                     ApiError body = new ApiError(
-                            ErrorCode.ACCESS_DENIED, null,
+                            ErrorCode.AUTH_REQUIRED, null,
                             request.getRequestURI(),
                             MDC.get("traceId"), MDC.get("correlationId")
                     );

@@ -1,12 +1,37 @@
 package com.agora.repository.user;
 
+import com.agora.entity.user.ERole;
 import com.agora.entity.user.User;
+import com.agora.enums.user.AccountStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
+    @EntityGraph(attributePaths = "roles")
     Optional<User> findByEmailIgnoreCase(String email);
+
+    @EntityGraph(attributePaths = "roles")
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") UUID id);
+
+    @EntityGraph(attributePaths = "roles")
+    @Query("""
+            select distinct u
+            from User u
+            join u.roles role
+            where role = :role
+              and u.accountStatus = :accountStatus
+            order by u.lastName asc, u.firstName asc, u.email asc
+            """)
+    List<User> findAllByRoleAndAccountStatus(
+            @Param("role") ERole role,
+            @Param("accountStatus") AccountStatus accountStatus
+    );
 }
