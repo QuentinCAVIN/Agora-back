@@ -15,6 +15,8 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
 
     boolean existsByUserIdAndGroupId(UUID userId, UUID groupId);
 
+    boolean existsByUser_IdAndGroup_CouncilPowersIsTrue(UUID userId);
+
     @Query("""
             select gm
             from GroupMembership gm

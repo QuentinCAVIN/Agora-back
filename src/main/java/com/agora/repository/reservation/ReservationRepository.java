@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -23,6 +24,23 @@ public interface ReservationRepository extends JpaRepository<Reservation, UUID>,
     long countByReservationDate(LocalDate reservationDate);
 
     long countByStatus(ReservationStatus status);
+
+    long countByStatusIn(Collection<ReservationStatus> statuses);
+
+    long countByDepositStatusIn(Collection<DepositStatus> statuses);
+
+    boolean existsByBookingReference(String bookingReference);
+
+    @Query(
+            value = """
+                    SELECT COALESCE(MAX(CAST(SUBSTRING(booking_reference FROM 7 FOR 5) AS INTEGER)), 0)
+                    FROM reservations
+                    WHERE SUBSTRING(booking_reference FROM 1 FOR 6) = :prefix
+                      AND LENGTH(booking_reference) = 11
+                    """,
+            nativeQuery = true
+    )
+    int findMaxSequenceForDatePrefix(@Param("prefix") String prefix);
 
     long countByDepositStatus(DepositStatus depositStatus);
 

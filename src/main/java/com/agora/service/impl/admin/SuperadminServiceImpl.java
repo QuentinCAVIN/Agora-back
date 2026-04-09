@@ -27,14 +27,14 @@ public class SuperadminServiceImpl implements SuperadminService {
 
     @Override
     public List<AdminSupportUserDto> getActiveAdminSupportUsers() {
-        return userRepository.findAllByRoleAndAccountStatus(ADMIN_SUPPORT_ROLE, AccountStatus.ACTIVE).stream()
+        return userRepository.findAllByAdminSupportIsTrueAndAccountStatus(AccountStatus.ACTIVE).stream()
                 .map(this::toDto)
                 .toList();
     }
 
     @Override
     @Transactional
-    @Audited(action = "ADMIN_SUPPORT_GRANTED")
+    @Audited(action = "ADMIN_SUPPORT_GRANTED", logParams = true)
     public AdminSupportUserDto grantAdminSupport(UUID userId) {
         User user = loadUser(userId);
         validateGrantTarget(user);
@@ -47,17 +47,47 @@ public class SuperadminServiceImpl implements SuperadminService {
         }
 
         user.addRole(ADMIN_SUPPORT_ROLE);
+        user.setAdminSupport(true);
         return toDto(userRepository.save(user));
     }
 
     @Override
     @Transactional
-    @Audited(action = "ADMIN_SUPPORT_REVOKED")
+    @Audited(action = "ADMIN_SUPPORT_REVOKED", logParams = true)
     public void revokeAdminSupport(UUID userId) {
         User user = loadUser(userId);
-        if (user.getRoles().remove(ADMIN_SUPPORT_ROLE)) {
+        boolean changed = user.getRoles().remove(ADMIN_SUPPORT_ROLE);
+        if (user.isAdminSupport()) {
+            user.setAdminSupport(false);
+            changed = true;
+        }
+        if (changed) {
             userRepository.save(user);
         }
+    }
+
+    @Override
+    @Transactional
+    public void revokeSecretaryAdmin(UUID userId) {
+        User user = loadUser(userId);
+        if (!user.getRoles().contains(ERole.SECRETARY_ADMIN)) {
+            throw new BusinessException(
+                    ErrorCode.VALIDATION_ERROR,
+                    "L'utilisateur n'a pas le rôle SECRETARY_ADMIN en base."
+            );
+        }
+        long withRole = userRepository.countDistinctByRolesContainingAndAccountStatus(
+                ERole.SECRETARY_ADMIN,
+                AccountStatus.ACTIVE
+        );
+        if (withRole <= 1) {
+            throw new BusinessException(
+                    ErrorCode.LAST_ADMIN_CONSTRAINT,
+                    "Impossible de révoquer le dernier secrétaire administrateur."
+            );
+        }
+        user.getRoles().remove(ERole.SECRETARY_ADMIN);
+        userRepository.save(user);
     }
 
     private User loadUser(UUID userId) {

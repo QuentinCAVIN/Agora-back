@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 @Getter
@@ -29,10 +30,13 @@ public class AuditLog {
     @Column(nullable = false)
     private String action;
 
-    /** JSONB PostgreSQL : mapper le type JDBC JSON pour éviter l’INSERT en varchar. */
+    /**
+     * {@link SqlTypes#JSON} : validation {@code ddl-auto=validate} vs colonne {@code jsonb} PostgreSQL.
+     * {@link AuditDetailsJsonConverter} : persistance / lecture fiables (H2, encodage chaîne).
+     */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "jsonb")
-    private String details;
+    @Convert(converter = AuditDetailsJsonConverter.class)
+    private Map<String, Object> details;
 
     @Column(nullable = false)
     private boolean impersonation;

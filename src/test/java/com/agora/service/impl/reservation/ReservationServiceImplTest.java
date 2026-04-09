@@ -21,9 +21,10 @@ import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
 import com.agora.config.SecurityUtils;
 import com.agora.service.impl.audit.AuditService;
+import com.agora.service.reservation.ReservationBookingReferenceService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -70,8 +71,25 @@ class ReservationServiceImplTest {
     @Mock
     private AuditService auditService;
 
-    @InjectMocks
+    @Mock
+    private ReservationBookingReferenceService reservationBookingReferenceService;
+
     private ReservationServiceImpl reservationService;
+
+    @BeforeEach
+    void initService() {
+        reservationService = new ReservationServiceImpl(
+                reservationRepository,
+                resourceRepository,
+                blackoutPeriodRepository,
+                userRepository,
+                groupRepository,
+                groupMembershipRepository,
+                securityUtils,
+                auditService,
+                reservationBookingReferenceService
+        );
+    }
 
     @Test
     void getMyReservations_shouldFilterByAuthenticatedUserAndMapSummary() {
@@ -225,7 +243,10 @@ class ReservationServiceImplTest {
         saved.setStatus(ReservationStatus.CONFIRMED);
         saved.setPurpose("Reunion");
         saved.setCreatedAt(Instant.parse("2026-03-24T11:00:00Z"));
+        saved.setBookingReference("26041000001");
 
+        when(reservationBookingReferenceService.allocateNextReference(LocalDate.of(2026, 4, 10)))
+                .thenReturn("26041000001");
         when(userRepository.findByJwtSubject("user@example.com")).thenReturn(Optional.of(user));
         when(resourceRepository.findById(resourceId)).thenReturn(Optional.of(resource));
         when(reservationRepository.existsOverlappingSlot(any(), any(), any(), any(), anyList())).thenReturn(false);

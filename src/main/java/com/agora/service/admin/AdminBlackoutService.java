@@ -9,11 +9,14 @@ import com.agora.exception.ErrorCode;
 import com.agora.config.SecurityUtils;
 import com.agora.repository.calendar.BlackoutPeriodRepository;
 import com.agora.repository.resource.ResourceRepository;
+import com.agora.service.impl.audit.AuditService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -23,6 +26,7 @@ public class AdminBlackoutService {
     private final BlackoutPeriodRepository blackoutPeriodRepository;
     private final ResourceRepository resourceRepository;
     private final SecurityUtils securityUtils;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public List<BlackoutPeriodResponseDto> listAll() {
@@ -51,14 +55,33 @@ public class AdminBlackoutService {
         );
 
         BlackoutPeriod saved = blackoutPeriodRepository.save(entity);
+        String actor = securityUtils.tryGetAuthenticatedEmail().orElse("SYSTEM");
+        Map<String, Object> details = new HashMap<>();
+        details.put("blackoutId", saved.getId().toString());
+        details.put("dateFrom", saved.getDateFrom().toString());
+        details.put("dateTo", saved.getDateTo().toString());
+        if (saved.getResource() != null) {
+            details.put("resourceId", saved.getResource().getId().toString());
+            details.put("resourceName", saved.getResource().getName());
+        }
+        auditService.log("BLACKOUT_CREATED", actor, null, details, false);
         return toDto(saved);
     }
 
     @Transactional
     public void delete(UUID id) {
-        if (!blackoutPeriodRepository.existsById(id)) {
-            throw new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Fermeture introuvable");
+        BlackoutPeriod existing = blackoutPeriodRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(ErrorCode.RESOURCE_NOT_FOUND, "Fermeture introuvable"));
+        String actor = securityUtils.tryGetAuthenticatedEmail().orElse("SYSTEM");
+        Map<String, Object> details = new HashMap<>();
+        details.put("blackoutId", id.toString());
+        details.put("dateFrom", existing.getDateFrom().toString());
+        details.put("dateTo", existing.getDateTo().toString());
+        if (existing.getResource() != null) {
+            details.put("resourceId", existing.getResource().getId().toString());
+            details.put("resourceName", existing.getResource().getName());
         }
+        auditService.log("BLACKOUT_DELETED", actor, null, details, false);
         blackoutPeriodRepository.deleteById(id);
     }
 

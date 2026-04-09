@@ -168,4 +168,35 @@ class SuperadminControllerWebTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("GEN-003"));
     }
+
+    @Test
+    @WithMockUser(username = "superadmin@agora.local", roles = "SUPERADMIN")
+    void revokeSecretaryAdmin_withSuperadminRole_returnsNoContent() throws Exception {
+        UUID userId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        doNothing().when(superadminService).revokeSecretaryAdmin(userId);
+
+        mockMvc.perform(delete("/api/superadmin/secretary-admin/{userId}", userId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @WithMockUser(username = "admin@agora.local", roles = "SECRETARY_ADMIN")
+    void revokeSecretaryAdmin_withoutSuperadminRole_returnsForbidden() throws Exception {
+        UUID userId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+
+        mockMvc.perform(delete("/api/superadmin/secretary-admin/{userId}", userId))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "superadmin@agora.local", roles = "SUPERADMIN")
+    void revokeSecretaryAdmin_whenLast_returnsConflict() throws Exception {
+        UUID userId = UUID.fromString("44444444-4444-4444-4444-444444444444");
+        doThrow(new BusinessException(ErrorCode.LAST_ADMIN_CONSTRAINT, "Dernier secrétaire"))
+                .when(superadminService).revokeSecretaryAdmin(userId);
+
+        mockMvc.perform(delete("/api/superadmin/secretary-admin/{userId}", userId))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("AUTH-011"));
+    }
 }

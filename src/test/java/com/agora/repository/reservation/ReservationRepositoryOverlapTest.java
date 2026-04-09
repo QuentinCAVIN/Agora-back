@@ -1,6 +1,7 @@
 package com.agora.repository.reservation;
 
 import com.agora.entity.reservation.Reservation;
+import com.agora.testsupport.TestBookingRefs;
 import com.agora.entity.resource.Resource;
 import com.agora.entity.user.User;
 import com.agora.enums.reservation.ReservationStatus;
@@ -169,6 +170,7 @@ class ReservationRepositoryOverlapTest {
         reservation.setSlotEnd(end);
         reservation.setStatus(status);
         reservation.setPurpose("Test overlap");
+        reservation.setBookingReference(TestBookingRefs.next());
         entityManager.persist(reservation);
         entityManager.flush();
         return reservation;

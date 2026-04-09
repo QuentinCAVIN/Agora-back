@@ -46,9 +46,10 @@ public class AdminUsersController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "50") int size,
             @RequestParam(required = false) String accountType,
-            @RequestParam(required = false) String status
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q
     ) {
-        return adminUserService.listUsers(page, size, accountType, status);
+        return adminUserService.listUsers(page, size, accountType, status, q);
     }
 
     @GetMapping("/{userId}/print-summary")
@@ -75,8 +76,11 @@ public class AdminUsersController {
     @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
-    public AdminUserDetailResponseDto createTutored(@Valid @RequestBody CreateTutoredUserRequestDto body) {
-        return adminUserService.createTutored(body);
+    public AdminUserDetailResponseDto createTutored(
+            @Valid @RequestBody CreateTutoredUserRequestDto body,
+            Authentication authentication
+    ) {
+        return adminUserService.createTutored(body, authentication);
     }
 
     @PatchMapping("/{userId}/tutored")
@@ -84,9 +88,10 @@ public class AdminUsersController {
     @SecurityRequirement(name = "bearerAuth")
     public AdminUserDetailResponseDto updateTutored(
             @PathVariable UUID userId,
-            @Valid @RequestBody UpdateTutoredUserRequestDto body
+            @Valid @RequestBody UpdateTutoredUserRequestDto body,
+            Authentication authentication
     ) {
-        return adminUserService.updateTutored(userId, body);
+        return adminUserService.updateTutored(userId, body, authentication);
     }
 
     @PostMapping("/{userId}/activate-autonomous")
@@ -94,17 +99,21 @@ public class AdminUsersController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<Void> activateAutonomous(
             @PathVariable UUID userId,
-            @Valid @RequestBody ActivateAutonomousRequestDto body
+            @Valid @RequestBody ActivateAutonomousRequestDto body,
+            Authentication authentication
     ) {
-        adminUserService.requestActivateAutonomous(userId, body);
+        adminUserService.requestActivateAutonomous(userId, body, authentication);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{userId}/resend-activation")
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
-    public ResponseEntity<Void> resendActivation(@PathVariable UUID userId) {
-        adminUserService.resendActivation(userId);
+    public ResponseEntity<Void> resendActivation(
+            @PathVariable UUID userId,
+            Authentication authentication
+    ) {
+        adminUserService.resendActivation(userId, authentication);
         return ResponseEntity.ok().build();
     }
 
@@ -112,16 +121,16 @@ public class AdminUsersController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
-    public void suspend(@PathVariable UUID userId) {
-        adminUserService.suspendUser(userId);
+    public void suspend(@PathVariable UUID userId, Authentication authentication) {
+        adminUserService.suspendUser(userId, authentication);
     }
 
     @PostMapping("/{userId}/reactivate")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
-    public void reactivate(@PathVariable UUID userId) {
-        adminUserService.reactivateUser(userId);
+    public void reactivate(@PathVariable UUID userId, Authentication authentication) {
+        adminUserService.reactivateUser(userId, authentication);
     }
 
     @DeleteMapping("/{userId}")

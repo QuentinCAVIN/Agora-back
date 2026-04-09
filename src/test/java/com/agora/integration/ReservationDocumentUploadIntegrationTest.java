@@ -1,6 +1,7 @@
 package com.agora.integration;
 
 import com.agora.entity.reservation.Reservation;
+import com.agora.testsupport.TestBookingRefs;
 import com.agora.entity.resource.Resource;
 import com.agora.entity.user.User;
 import com.agora.enums.reservation.DepositStatus;
@@ -114,6 +115,7 @@ class ReservationDocumentUploadIntegrationTest {
         reservation.setStatus(ReservationStatus.CONFIRMED);
         reservation.setPurpose("Integration PJ");
         reservation.setDepositStatus(DepositStatus.DEPOSIT_PENDING);
+        reservation.setBookingReference(TestBookingRefs.next());
         reservationRepository.save(reservation);
     }
 
@@ -144,7 +146,8 @@ class ReservationDocumentUploadIntegrationTest {
                         "RESERVATION_DOCUMENT_UPLOADED".equals(log.getAction())
                                 && OWNER_EMAIL.equals(log.getAdminUser())
                                 && log.getDetails() != null
-                                && log.getDetails().contains("BREVO_SIMULATED"));
+                                && "BREVO_SIMULATED".equals(
+                                String.valueOf(log.getDetails().get("relayChannel"))));
     }
 
     @Test

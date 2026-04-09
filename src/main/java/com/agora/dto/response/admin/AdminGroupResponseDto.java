@@ -15,6 +15,7 @@ public record AdminGroupResponseDto(
         int discountValue,
         DiscountAppliesTo discountAppliesTo,
         String discountLabel,
-        int memberCount
+        int memberCount,
+        boolean councilPowers
 ) {
 }

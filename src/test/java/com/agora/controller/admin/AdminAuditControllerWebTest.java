@@ -45,7 +45,8 @@ class AdminAuditControllerWebTest {
                 eq("target@example.com"),
                 eq(true),
                 eq(LocalDate.of(2026, 4, 1)),
-                eq(LocalDate.of(2026, 4, 30))
+                eq(LocalDate.of(2026, 4, 30)),
+                eq(null)
         )).thenReturn(new AdminAuditPageResponse(List.of(), 0, 0));
 
         mockMvc.perform(get("/api/admin/audit")
@@ -62,7 +63,7 @@ class AdminAuditControllerWebTest {
     @Test
     @WithMockUser(roles = "SECRETARY_ADMIN")
     void list_withoutFilters_shouldDelegateDefaults() throws Exception {
-        when(adminAuditQueryService.list(0, 20, null, null, null, null, null))
+        when(adminAuditQueryService.list(0, 20, null, null, null, null, null, null))
                 .thenReturn(new AdminAuditPageResponse(List.of(), 0, 0));
 
         mockMvc.perform(get("/api/admin/audit"))

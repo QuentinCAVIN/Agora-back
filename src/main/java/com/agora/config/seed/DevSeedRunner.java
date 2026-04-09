@@ -5,6 +5,7 @@ import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
+import com.agora.service.reservation.ReservationBookingReferenceService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,6 +29,7 @@ public class DevSeedRunner implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
     private final ResourceRepository resourceRepository;
     private final ReservationRepository reservationRepository;
+    private final ReservationBookingReferenceService reservationBookingReferenceService;
 
     public DevSeedRunner(
             UserRepository userRepository,
@@ -35,7 +37,8 @@ public class DevSeedRunner implements CommandLineRunner {
             GroupMembershipRepository groupMembershipRepository,
             PasswordEncoder passwordEncoder,
             ResourceRepository resourceRepository,
-            ReservationRepository reservationRepository
+            ReservationRepository reservationRepository,
+            ReservationBookingReferenceService reservationBookingReferenceService
     ) {
         this.userRepository = userRepository;
         this.groupRepository = groupRepository;
@@ -43,6 +46,7 @@ public class DevSeedRunner implements CommandLineRunner {
         this.passwordEncoder = passwordEncoder;
         this.resourceRepository = resourceRepository;
         this.reservationRepository = reservationRepository;
+        this.reservationBookingReferenceService = reservationBookingReferenceService;
     }
 
     @Override
@@ -64,7 +68,11 @@ public class DevSeedRunner implements CommandLineRunner {
         memberships.ensureMembership(users.admin(), groups.council());
 
         new SeedResourcesHelper(resourceRepository).ensureResources();
-        new SeedReservationsHelper(reservationRepository, resourceRepository).ensureSeedReservations(users);
+        new SeedReservationsHelper(
+                reservationRepository,
+                resourceRepository,
+                reservationBookingReferenceService
+        ).ensureSeedReservations(users);
     }
 }
 

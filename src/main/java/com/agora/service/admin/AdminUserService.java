@@ -43,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -67,9 +68,15 @@ public class AdminUserService {
     private final AdminUserPrintSummaryService adminUserPrintSummaryService;
 
     @Transactional(readOnly = true)
-    public AdminUsersListResponse listUsers(int page, int size, String accountTypeParam, String statusParam) {
+    public AdminUsersListResponse listUsers(
+            int page,
+            int size,
+            String accountTypeParam,
+            String statusParam,
+            String searchQuery
+    ) {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE);
-        Specification<User> spec = buildUserListSpec(accountTypeParam, statusParam);
+        Specification<User> spec = buildUserListSpec(accountTypeParam, statusParam, searchQuery);
         Page<User> users = userRepository.findAll(
                 spec,
                 PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"))
@@ -81,7 +88,8 @@ public class AdminUserService {
         );
     }
 
-    private Specification<User> buildUserListSpec(String accountTypeParam, String statusParam) {
+    private Specification<User> buildUserListSpec(
+            String accountTypeParam, String statusParam, String searchQuery) {
         return (root, query, cb) -> {
             List<Predicate> preds = new ArrayList<>();
             if (accountTypeParam != null && !accountTypeParam.isBlank()) {
@@ -100,6 +108,13 @@ public class AdminUserService {
                     preds.add(cb.equal(root.get("accountStatus"), st));
                 }
             }
+            if (searchQuery != null && !searchQuery.isBlank()) {
+                String frag = "%" + searchQuery.trim().toLowerCase(Locale.ROOT) + "%";
+                preds.add(cb.or(
+                        cb.like(cb.lower(root.get("firstName")), frag),
+                        cb.like(cb.lower(root.get("lastName")), frag),
+                        cb.like(cb.lower(root.get("email")), frag)));
+            }
             if (preds.isEmpty()) {
                 return cb.conjunction();
             }
@@ -108,25 +123,47 @@ public class AdminUserService {
     }
 
     @Transactional
-    public void suspendUser(UUID userId) {
+    public void suspendUser(UUID userId, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
         if (u.getAccountStatus() == AccountStatus.DELETED) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Compte déjà suspendu.");
         }
+        String targetLabel = u.getEmail() != null && !u.getEmail().isBlank()
+                ? u.getEmail()
+                : u.getInternalRef();
         u.setAccountStatus(AccountStatus.DELETED);
         userRepository.save(u);
+        auditService.log(
+                "USER_SUSPENDED",
+                actorSubject,
+                targetLabel,
+                Map.of("userId", userId.toString()),
+                false
+        );
     }
 
     @Transactional
-    public void reactivateUser(UUID userId) {
+    public void reactivateUser(UUID userId, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         User u = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
         if (u.getAccountStatus() != AccountStatus.DELETED) {
             throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Seuls les comptes suspendus peuvent être réactivés.");
         }
+        String targetLabel = u.getEmail() != null && !u.getEmail().isBlank()
+                ? u.getEmail()
+                : u.getInternalRef();
         u.setAccountStatus(AccountStatus.ACTIVE);
         userRepository.save(u);
+        auditService.log(
+                "USER_REACTIVATED",
+                actorSubject,
+                targetLabel,
+                Map.of("userId", userId.toString()),
+                false
+        );
     }
 
     /**
@@ -233,7 +270,8 @@ public class AdminUserService {
     }
 
     @Transactional
-    public AdminUserDetailResponseDto createTutored(CreateTutoredUserRequestDto req) {
+    public AdminUserDetailResponseDto createTutored(CreateTutoredUserRequestDto req, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         Group publicGroup = groupRepository.findByName("Public")
                 .orElseThrow(() -> new IllegalStateException("Le groupe preset 'Public' est introuvable"));
 
@@ -255,11 +293,19 @@ public class AdminUserService {
         membership.setJoinedAt(Instant.now());
         groupMembershipRepository.save(membership);
 
+        auditService.log(
+                "USER_TUTORED_CREATED",
+                actorSubject,
+                saved.getInternalRef(),
+                Map.of("userId", saved.getId().toString(), "internalRef", saved.getInternalRef()),
+                false
+        );
         return getUserDetail(saved.getId());
     }
 
     @Transactional
-    public AdminUserDetailResponseDto updateTutored(UUID userId, UpdateTutoredUserRequestDto req) {
+    public AdminUserDetailResponseDto updateTutored(UUID userId, UpdateTutoredUserRequestDto req, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
         if (user.getAccountType() != AccountType.TUTORED) {
@@ -271,11 +317,22 @@ public class AdminUserService {
         user.setNotesAdmin(req.notesAdmin());
         user.setBirthYear(req.birthYear());
         userRepository.save(user);
+        String targetLabel = user.getEmail() != null && !user.getEmail().isBlank()
+                ? user.getEmail()
+                : user.getInternalRef();
+        auditService.log(
+                "USER_TUTORED_UPDATED",
+                actorSubject,
+                targetLabel,
+                Map.of("userId", userId.toString()),
+                false
+        );
         return getUserDetail(user.getId());
     }
 
     @Transactional
-    public void requestActivateAutonomous(UUID userId, ActivateAutonomousRequestDto req) {
+    public void requestActivateAutonomous(UUID userId, ActivateAutonomousRequestDto req, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
         if (user.getAccountType() != AccountType.TUTORED) {
@@ -290,10 +347,18 @@ public class AdminUserService {
         String token = accountActivationService.issueFreshToken(user);
         log.info("Activation autonome — token émis pour {} (userId={}) : lier /api/auth/activate?token={}",
                 email, userId, token);
+        auditService.log(
+                "USER_ACTIVATION_AUTONOMOUS_REQUESTED",
+                actorSubject,
+                email,
+                Map.of("userId", userId.toString(), "email", email),
+                false
+        );
     }
 
     @Transactional
-    public void resendActivation(UUID userId) {
+    public void resendActivation(UUID userId, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
         if (user.getEmail() == null || user.getEmail().isBlank()) {
@@ -301,6 +366,13 @@ public class AdminUserService {
         }
         String token = accountActivationService.issueFreshToken(user);
         log.info("Renvoi activation pour {} (userId={}) token={}", user.getEmail(), userId, token);
+        auditService.log(
+                "USER_ACTIVATION_RESENT",
+                actorSubject,
+                user.getEmail(),
+                Map.of("userId", userId.toString()),
+                false
+        );
     }
 
     private String generateUniqueInternalRef(String lastName, Integer birthYear) {

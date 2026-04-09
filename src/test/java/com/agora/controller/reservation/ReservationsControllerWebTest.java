@@ -146,7 +146,9 @@ class ReservationsControllerWebTest {
                 "Habitants commune",
                 "Reunion associative mensuelle",
                 List.of(),
-                null
+                null,
+                "26041000001",
+                "user@example.com"
         );
 
         when(reservationService.createReservation(any(), any())).thenReturn(response);
@@ -267,7 +269,9 @@ class ReservationsControllerWebTest {
                 "Habitants commune",
                 "Reunion associative mensuelle",
                 List.of(),
-                null
+                null,
+                "26041000001",
+                "jean@example.com"
         );
 
         when(reservationService.getReservationById(any(UUID.class), any())).thenReturn(response);
@@ -282,6 +286,8 @@ class ReservationsControllerWebTest {
                 .andExpect(jsonPath("$.slotEnd").value("18:00"))
                 .andExpect(jsonPath("$.status").value("CONFIRMED"))
                 .andExpect(jsonPath("$.userName").value("Jean Dupont"))
+                .andExpect(jsonPath("$.bookingReference").value("26041000001"))
+                .andExpect(jsonPath("$.userEmail").value("jean@example.com"))
                 .andExpect(jsonPath("$.groupName").value("Habitants commune"))
                 .andExpect(jsonPath("$.resource.id").value("22222222-2222-2222-2222-222222222222"));
     }

@@ -2,6 +2,7 @@ package com.agora.controller.admin;
 
 import com.agora.dto.request.admin.AdminPatchReservationStatusRequestDto;
 import com.agora.dto.response.common.PagedResponse;
+import com.agora.dto.response.reservation.AdminReservationListStatsResponseDto;
 import com.agora.dto.response.reservation.ReservationSummaryResponseDto;
 import com.agora.enums.reservation.ReservationStatus;
 import com.agora.service.admin.AdminReservationOperationsService;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -36,7 +38,7 @@ public class AdminReservationsController {
     @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
     @SecurityRequirement(name = "bearerAuth")
     public PagedResponse<ReservationSummaryResponseDto> list(
-            @RequestParam(required = false) ReservationStatus status,
+            @RequestParam(required = false) List<ReservationStatus> status,
             @RequestParam(required = false) UUID resourceId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
@@ -44,6 +46,13 @@ public class AdminReservationsController {
             @RequestParam(defaultValue = "20") int size
     ) {
         return adminReservationOperationsService.listReservations(status, resourceId, dateFrom, dateTo, page, size);
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('SUPERADMIN', 'SECRETARY_ADMIN', 'ADMIN_SUPPORT')")
+    @SecurityRequirement(name = "bearerAuth")
+    public AdminReservationListStatsResponseDto stats() {
+        return adminReservationOperationsService.reservationListStats();
     }
 
     @PatchMapping("/{reservationId}/status")

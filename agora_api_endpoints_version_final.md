@@ -11,6 +11,17 @@
 - **JSON** : `GET /v3/api-docs` (Springdoc). Swagger UI : `/swagger-ui.html`.
 - **Synchroniser le front** : dans `Agora-front`, `npm run openapi:sync` (export automatique via le test `OpenApiExportTest` du back, puis génération TypeScript). Détail : `Agora-front/docs/openapi-sync.md`.
 
+### Évolutions récentes (cahier de suivi UI / contrat)
+
+- **Réservations — référence métier** : chaque réservation porte un `bookingReference` unique, format **`yyMMdd` + 5 chiffres** (séquence par jour de réservation à la création / seed). Présent dans les DTO **résumé** et **détail** (`ReservationSummaryResponseDto`, `ReservationDetailResponseDto`).
+- **GET `/api/admin/reservations`** : filtre `status` **répétable** (ex. `status=PENDING_VALIDATION&status=PENDING_DOCUMENT`) pour un **OU** logique côté serveur ; réponses enrichies `userName`, `userEmail`, `bookingReference` (pagination inchangée).
+- **GET `/api/admin/reservations/stats`** : compteurs **globaux** (toute la base, hors pagination) pour cartes / onglets admin — voir §11.
+- **GET `/api/admin/audit`** : paramètre optionnel `reservationId` pour la timeline filtrée côté serveur ; le détail des entrées peut inclure `reservationDisplayRef` (libellé court) en complément de `reservationId` (UUID).
+- **Gestion utilisateurs (`/admin/users`)** : bloc d’aide « Pouvoirs administrateur » placé **au-dessus** de la barre de recherche ; recherche avec **suggestions API** (`q` + onglet courant) ; liste paginée filtrée **serveur** via `q` ; **renvoi d’activation** : modal de confirmation + message d’erreur métier si pas d’e-mail (réponse **400** attendue : *Aucun email pour renvoyer l'activation*).
+- **Groupes admin** : création — champ « type » en **combobox** (liste explicite + saisie libre), normalisation **insensible à la casse / accents** pour Service, Association, Autre ; autres libellés → type `AUTRE` en base ; ajout de membres par **recherche utilisateur** (`/api/admin/users?q=`) sans saisir d’UUID.
+- **Superadmin — admin support** : recherche avec **debounce** (auto-requête) ; masquage des **UUID** dans les tableaux ; bouton **Promouvoir** plus compact ; mise en page élargie.
+- **Journal d’audit** : affichage de références réservation lisibles, cartes repliables, modal timeline ; correction template stricte (`bookingLabel ?? undefined`).
+
 ---
 
 ## 1. AUTH
@@ -322,7 +333,11 @@ Mes réservations (paginé).
       "depositAmountCents": 7500,
       "depositAmountFullCents": 15000,
       "discountLabel": "Réduction 50% (Habitants commune)",
-      "createdAt": "2026-03-24T10:30:00Z"
+      "createdAt": "2026-03-24T10:30:00Z",
+      "userName": "Jean Dupont",
+      "recurringGroupId": null,
+      "bookingReference": "26041000001",
+      "userEmail": "jean.dupont@gmail.com"
     }
   ],
   "totalElements": 3,
@@ -331,6 +346,8 @@ Mes réservations (paginé).
   "size": 20
 }
 ```
+
+> Champs **résumé** : `userName` (prénom + nom, ou email si nom vide), `userEmail`, `bookingReference`, `recurringGroupId` (séries).
 
 ---
 
@@ -378,7 +395,9 @@ Créer une réservation. Tarif auto-calculé selon les groupes de l'utilisateur.
   "groupName": "Habitants commune",
   "purpose": "Réunion associative mensuelle",
   "documents": [],
-  "recurringGroupId": null
+  "recurringGroupId": null,
+  "bookingReference": "26041000001",
+  "userEmail": "jean.dupont@gmail.com"
 }
 ```
 
@@ -441,7 +460,11 @@ Créer une série récurrente (hebdo, bi-hebdo, mensuel).
     "depositAmountCents": 0,
     "depositAmountFullCents": 15000,
     "discountLabel": "Exonération totale (Association locale)",
-    "createdAt": "2026-03-24T12:00:00Z"
+    "createdAt": "2026-03-24T12:00:00Z",
+    "userName": "Jean Dupont",
+    "recurringGroupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "bookingReference": "26040100001",
+    "userEmail": "jean.dupont@gmail.com"
   },
   {
     "id": "res011",
@@ -455,7 +478,11 @@ Créer une série récurrente (hebdo, bi-hebdo, mensuel).
     "depositAmountCents": 0,
     "depositAmountFullCents": 15000,
     "discountLabel": "Exonération totale (Association locale)",
-    "createdAt": "2026-03-24T12:00:00Z"
+    "createdAt": "2026-03-24T12:00:00Z",
+    "userName": "Jean Dupont",
+    "recurringGroupId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "bookingReference": "26040800001",
+    "userEmail": "jean.dupont@gmail.com"
   }
 ]
 ```
@@ -1111,11 +1138,76 @@ Journal d'audit complet.
 ---
 
 ### `GET /api/admin/reservations` 🔒 Admin
-Toutes les réservations (vue admin).
+Toutes les réservations (vue admin), **pagination serveur**.
 
-**Query params :** `status`, `resourceId`, `dateFrom`, `dateTo`, `page`, `size`
+**Query params :**
+- `status` — **optionnel**, **répétable** : chaque valeur est un `ReservationStatus`. Si plusieurs paramètres `status` sont passés (ex. filtre UI « en attente »), le serveur applique un **OU** (`IN (...)`). Une seule valeur = filtre simple.
+- `resourceId`, `dateFrom`, `dateTo`, `page`, `size`
 
-**200 :** même structure `PagedReservations` que `GET /api/reservations`.
+**Rôles :** `SUPERADMIN`, `SECRETARY_ADMIN`, `ADMIN_SUPPORT`.
+
+**200 :** même enveloppe paginée que `GET /api/reservations` ; chaque élément de `content` inclut notamment :
+- `userName` — libellé affichable (nom + prénom, ou email si besoin),
+- `userEmail` — email du réservateur si connu,
+- `bookingReference` — référence métier (`yyMMdd` + 5 chiffres).
+
+Exemple (extrait) :
+```json
+{
+  "content": [
+    {
+      "id": "07cd5824-e9e5-412e-9340-b0204546bf7e",
+      "resourceName": "Salle polyvalente — Petite salle",
+      "resourceType": "IMMOBILIER",
+      "date": "2026-04-15",
+      "slotStart": "00:00",
+      "slotEnd": "00:00",
+      "status": "CONFIRMED",
+      "depositStatus": "DEPOSIT_PENDING",
+      "depositAmountCents": 8000,
+      "depositAmountFullCents": 8000,
+      "discountLabel": "Aucune remise",
+      "createdAt": "2026-04-08T10:00:00Z",
+      "userName": "Camille Martin",
+      "recurringGroupId": null,
+      "bookingReference": "26041500003",
+      "userEmail": "camille.martin@example.com"
+    }
+  ],
+  "totalElements": 42,
+  "totalPages": 5,
+  "page": 0,
+  "size": 10
+}
+```
+
+---
+
+### `GET /api/admin/reservations/stats` 🔒 Admin
+Compteurs **globaux** sur toutes les réservations (indépendants de la pagination de la liste).
+
+**Rôles :** `SUPERADMIN`, `SECRETARY_ADMIN`, `ADMIN_SUPPORT`.
+
+**200 :**
+```json
+{
+  "total": 42,
+  "pendingGroup": 5,
+  "confirmed": 28,
+  "cancelled": 6,
+  "rejected": 1,
+  "depositPending": 12,
+  "exemptOrWaived": 4
+}
+```
+
+| Champ | Signification |
+|-------|----------------|
+| `total` | Nombre total de réservations |
+| `pendingGroup` | `PENDING_VALIDATION` ou `PENDING_DOCUMENT` |
+| `confirmed` / `cancelled` / `rejected` | Par statut métier |
+| `depositPending` | Caution encore `DEPOSIT_PENDING` |
+| `exemptOrWaived` | `EXEMPT` ou `WAIVED` |
 
 ---
 

@@ -49,4 +49,11 @@ public class Group {
     @Enumerated(EnumType.STRING)
     @Column(name = "discount_applies_to", nullable = false, length = 40)
     private DiscountAppliesTo discountAppliesTo = DiscountAppliesTo.ALL;
+
+    /**
+     * Groupe doté de pouvoirs « conseil municipal » (ex. validation des confirmations
+     * effectuée par un personnel délégué uniquement si le compte est aussi membre de ce groupe).
+     */
+    @Column(name = "council_powers", nullable = false)
+    private boolean councilPowers = false;
 }

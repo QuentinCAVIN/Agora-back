@@ -1,6 +1,7 @@
 package com.agora.config;
 
 import com.agora.service.impl.audit.AuditService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -8,6 +9,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -18,6 +20,7 @@ public class AuditAspect {
 
     private final AuditService auditService;
     private final SecurityUtils securityUtils;
+    private final ObjectMapper objectMapper;
 
     @Around("@annotation(audited)")
     public Object audit(ProceedingJoinPoint pjp, Audited audited) throws Throwable {
@@ -33,7 +36,7 @@ public class AuditAspect {
 
         if (audited.logParams()) {
             try {
-                details.put("params", pjp.getArgs());
+                details.put("params", Arrays.stream(pjp.getArgs()).map(this::safeAuditParam).toList());
             } catch (Exception ignored) {
             }
         }
@@ -73,6 +76,17 @@ public class AuditAspect {
             );
 
             throw ex;
+        }
+    }
+
+    private Object safeAuditParam(Object arg) {
+        if (arg == null) {
+            return null;
+        }
+        try {
+            return objectMapper.valueToTree(arg);
+        } catch (IllegalArgumentException ex) {
+            return arg.toString();
         }
     }
 

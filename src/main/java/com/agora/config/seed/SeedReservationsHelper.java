@@ -7,6 +7,7 @@ import com.agora.entity.user.User;
 import com.agora.enums.reservation.ReservationStatus;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
+import com.agora.service.reservation.ReservationBookingReferenceService;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -19,13 +20,16 @@ final class SeedReservationsHelper {
 
     private final ReservationRepository reservationRepository;
     private final ResourceRepository resourceRepository;
+    private final ReservationBookingReferenceService bookingReferenceService;
 
     SeedReservationsHelper(
             ReservationRepository reservationRepository,
-            ResourceRepository resourceRepository
+            ResourceRepository resourceRepository,
+            ReservationBookingReferenceService bookingReferenceService
     ) {
         this.reservationRepository = reservationRepository;
         this.resourceRepository = resourceRepository;
+        this.bookingReferenceService = bookingReferenceService;
     }
 
     void ensureSeedReservations(SeededUsers users) {
@@ -111,6 +115,7 @@ final class SeedReservationsHelper {
         r.setSlotEnd(slotEnd);
         r.setStatus(status);
         r.setPurpose(purpose);
+        r.setBookingReference(bookingReferenceService.allocateNextReference(date));
 
         reservationRepository.save(r);
     }

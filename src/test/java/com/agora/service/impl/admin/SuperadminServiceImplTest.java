@@ -37,7 +37,8 @@ class SuperadminServiceImplTest {
         User user = buildUser("paul.assiste@mairie.fr", AccountStatus.ACTIVE);
         user.addRole(ERole.DELEGATE_ADMIN);
 
-        when(userRepository.findAllByRoleAndAccountStatus(ERole.DELEGATE_ADMIN, AccountStatus.ACTIVE))
+        user.setAdminSupport(true);
+        when(userRepository.findAllByAdminSupportIsTrueAndAccountStatus(AccountStatus.ACTIVE))
                 .thenReturn(List.of(user));
 
         List<AdminSupportUserDto> result = superadminService.getActiveAdminSupportUsers();
@@ -57,6 +58,7 @@ class SuperadminServiceImplTest {
         AdminSupportUserDto result = superadminService.grantAdminSupport(user.getId());
 
         assertThat(user.getRoles()).contains(ERole.DELEGATE_ADMIN);
+        assertThat(user.isAdminSupport()).isTrue();
         assertThat(result.email()).isEqualTo("jean.dupont@gmail.com");
         verify(userRepository).save(user);
     }
@@ -90,6 +92,7 @@ class SuperadminServiceImplTest {
     void revokeAdminSupport_shouldRemoveDelegateAdminRole() {
         User user = buildUser("jean.dupont@gmail.com", AccountStatus.ACTIVE);
         user.addRole(ERole.DELEGATE_ADMIN);
+        user.setAdminSupport(true);
 
         when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
         when(userRepository.save(user)).thenReturn(user);
@@ -97,6 +100,7 @@ class SuperadminServiceImplTest {
         superadminService.revokeAdminSupport(user.getId());
 
         assertThat(user.getRoles()).doesNotContain(ERole.DELEGATE_ADMIN);
+        assertThat(user.isAdminSupport()).isFalse();
         verify(userRepository).save(user);
     }
 
@@ -109,6 +113,37 @@ class SuperadminServiceImplTest {
         superadminService.revokeAdminSupport(user.getId());
 
         verify(userRepository, never()).save(user);
+    }
+
+    @Test
+    void revokeSecretaryAdmin_shouldThrowWhenLastActiveSecretary() {
+        User user = buildUser("sec@mairie.fr", AccountStatus.ACTIVE);
+        user.addRole(ERole.SECRETARY_ADMIN);
+
+        when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.countDistinctByRolesContainingAndAccountStatus(
+                ERole.SECRETARY_ADMIN, AccountStatus.ACTIVE)).thenReturn(1L);
+
+        assertThatThrownBy(() -> superadminService.revokeSecretaryAdmin(user.getId()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("code")
+                .isEqualTo(ErrorCode.LAST_ADMIN_CONSTRAINT);
+    }
+
+    @Test
+    void revokeSecretaryAdmin_shouldRemoveRoleWhenSeveral() {
+        User user = buildUser("sec2@mairie.fr", AccountStatus.ACTIVE);
+        user.addRole(ERole.SECRETARY_ADMIN);
+
+        when(userRepository.findByIdWithRoles(user.getId())).thenReturn(Optional.of(user));
+        when(userRepository.countDistinctByRolesContainingAndAccountStatus(
+                ERole.SECRETARY_ADMIN, AccountStatus.ACTIVE)).thenReturn(2L);
+        when(userRepository.save(user)).thenReturn(user);
+
+        superadminService.revokeSecretaryAdmin(user.getId());
+
+        assertThat(user.getRoles()).doesNotContain(ERole.SECRETARY_ADMIN);
+        verify(userRepository).save(user);
     }
 
     private static User buildUser(String email, AccountStatus accountStatus) {

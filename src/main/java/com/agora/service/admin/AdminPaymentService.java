@@ -13,6 +13,7 @@ import com.agora.exception.resource.ResourceNotFountException;
 import com.agora.config.SecurityUtils;
 import com.agora.repository.reservation.DepositPaymentHistoryRepository;
 import com.agora.repository.reservation.ReservationRepository;
+import com.agora.service.impl.audit.AuditService;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -27,7 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -39,6 +42,7 @@ public class AdminPaymentService {
     private final ReservationRepository reservationRepository;
     private final DepositPaymentHistoryRepository historyRepository;
     private final SecurityUtils securityUtils;
+    private final AuditService auditService;
 
     @Transactional(readOnly = true)
     public PagedResponse<AdminPaymentRowResponseDto> listPayments(
@@ -110,6 +114,26 @@ public class AdminPaymentService {
         h.setComment(body.comment());
         h.setUpdatedByName(adminLabel);
         historyRepository.save(h);
+
+        var u = r.getUser();
+        String targetLabel = u.getEmail() != null && !u.getEmail().isBlank()
+                ? u.getEmail()
+                : (u.getInternalRef() != null ? u.getInternalRef() : u.getId().toString());
+        Map<String, Object> auditDetails = new HashMap<>();
+        auditDetails.put("reservationId", reservationId.toString());
+        auditDetails.put("previousDepositStatus", previous.name());
+        auditDetails.put("newDepositStatus", body.status().name());
+        auditDetails.put("amountCents", amount);
+        if (body.paymentMode() != null) {
+            auditDetails.put("paymentMode", body.paymentMode().name());
+        }
+        auditService.log(
+                "DEPOSIT_STATUS_ADMIN",
+                adminLabel,
+                targetLabel,
+                auditDetails,
+                false
+        );
 
         return toRow(r);
     }

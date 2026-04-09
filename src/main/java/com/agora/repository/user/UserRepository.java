@@ -58,4 +58,16 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     List<User> findAllByAdminSupportIsTrueAndAccountStatus(AccountStatus accountStatus);
 
     long countByAccountTypeAndAccountStatus(AccountType accountType, AccountStatus accountStatus);
+
+    @Query("""
+            select count(distinct u.id)
+            from User u
+            join u.roles r
+            where r = :role
+              and u.accountStatus = :accountStatus
+            """)
+    long countDistinctByRolesContainingAndAccountStatus(
+            @Param("role") ERole role,
+            @Param("accountStatus") AccountStatus accountStatus
+    );
 }

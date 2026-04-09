@@ -27,6 +27,7 @@ import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
 import com.agora.service.impl.audit.AuditService;
+import com.agora.service.reservation.ReservationBookingReferenceService;
 import com.agora.service.reservation.ReservationService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
@@ -68,6 +69,7 @@ public class ReservationServiceImpl implements ReservationService {
     private final GroupMembershipRepository groupMembershipRepository;
     private final SecurityUtils securityUtils;
     private final AuditService auditService;
+    private final ReservationBookingReferenceService reservationBookingReferenceService;
 
     @Override
     @Transactional
@@ -137,6 +139,9 @@ public class ReservationServiceImpl implements ReservationService {
         reservation.setGroup(selectedGroup);
         reservation.setRecurringGroupId(recurringGroupId);
         reservation.setDepositStatus(DepositStatus.DEPOSIT_PENDING);
+        reservation.setBookingReference(
+                reservationBookingReferenceService.allocateNextReference(request.date())
+        );
 
         Reservation saved = reservationRepository.save(reservation);
 
@@ -160,6 +165,10 @@ public class ReservationServiceImpl implements ReservationService {
         int depositFull = (int) Math.round(resource.getDepositAmountCents());
         int depositApplied = depositFull;
         String discountLabel = "Aucune remise";
+
+        String userEmail = user.getEmail() != null && !user.getEmail().isBlank()
+                ? user.getEmail().trim()
+                : null;
 
         return new ReservationDetailResponseDto(
                 saved.getId(),
@@ -186,7 +195,9 @@ public class ReservationServiceImpl implements ReservationService {
                 selectedGroup != null ? selectedGroup.getName() : null,
                 saved.getPurpose(),
                 List.of(),
-                saved.getRecurringGroupId()
+                saved.getRecurringGroupId(),
+                saved.getBookingReference(),
+                userEmail
         );
     }
 
@@ -342,7 +353,9 @@ public class ReservationServiceImpl implements ReservationService {
                 d.discountLabel(),
                 d.createdAt(),
                 d.userName(),
-                d.recurringGroupId()
+                d.recurringGroupId(),
+                d.bookingReference(),
+                d.userEmail()
         );
     }
 
@@ -440,6 +453,8 @@ public class ReservationServiceImpl implements ReservationService {
         DepositStatus dep = reservation.getDepositStatus() != null
                 ? reservation.getDepositStatus()
                 : DepositStatus.DEPOSIT_PENDING;
+        User ru = reservation.getUser();
+        String email = ru.getEmail() != null && !ru.getEmail().isBlank() ? ru.getEmail().trim() : null;
         return new ReservationSummaryResponseDto(
                 reservation.getId(),
                 reservation.getResource().getName(),
@@ -453,8 +468,10 @@ public class ReservationServiceImpl implements ReservationService {
                 depositFull,
                 "Aucune remise",
                 reservation.getCreatedAt(),
-                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName(),
-                reservation.getRecurringGroupId()
+                ru.getFirstName() + " " + ru.getLastName(),
+                reservation.getRecurringGroupId(),
+                reservation.getBookingReference(),
+                email
         );
     }
 
@@ -482,6 +499,11 @@ public class ReservationServiceImpl implements ReservationService {
         Resource resource = reservation.getResource();
         int depositFull = (int) Math.round(resource.getDepositAmountCents());
         int depositApplied = depositFull;
+        DepositStatus dep = reservation.getDepositStatus() != null
+                ? reservation.getDepositStatus()
+                : DepositStatus.DEPOSIT_PENDING;
+        User ru = reservation.getUser();
+        String userEmail = ru.getEmail() != null && !ru.getEmail().isBlank() ? ru.getEmail().trim() : null;
 
         return new ReservationDetailResponseDto(
                 reservation.getId(),
@@ -491,7 +513,7 @@ public class ReservationServiceImpl implements ReservationService {
                 reservation.getSlotStart(),
                 reservation.getSlotEnd(),
                 reservation.getStatus(),
-                DepositStatus.DEPOSIT_PENDING,
+                dep,
                 depositApplied,
                 depositFull,
                 "Aucune remise",
@@ -504,11 +526,13 @@ public class ReservationServiceImpl implements ReservationService {
                         depositFull,
                         resource.getImageUrl()
                 ),
-                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName(),
+                ru.getFirstName() + " " + ru.getLastName(),
                 reservation.getGroup() != null ? reservation.getGroup().getName() : null,
                 reservation.getPurpose(),
                 List.of(),
-                reservation.getRecurringGroupId()
+                reservation.getRecurringGroupId(),
+                reservation.getBookingReference(),
+                userEmail
         );
     }
 

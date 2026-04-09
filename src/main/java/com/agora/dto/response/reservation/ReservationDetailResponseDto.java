@@ -31,6 +31,8 @@ public record ReservationDetailResponseDto(
         String groupName,
         String purpose,
         List<ReservationDocumentDto> documents,
-        UUID recurringGroupId
+        UUID recurringGroupId,
+        String bookingReference,
+        String userEmail
 ) {
 }

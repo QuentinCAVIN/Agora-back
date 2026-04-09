@@ -143,7 +143,7 @@ public class ResourceServiceImpl implements ResourceService {
 
 
     @Override
-    @Audited(action = "RESOURCE_CREATED")
+    @Audited(action = "RESOURCE_CREATED", logParams = true)
     public ResourceDto createResource(ResourceRequest request) {
         validateResource(request);
         Resource resource = resourceMapper.toEntity(request);
@@ -159,7 +159,7 @@ public class ResourceServiceImpl implements ResourceService {
 
 
     @Override
-    @Audited(action = "RESOURCE_UPDATED")
+    @Audited(action = "RESOURCE_UPDATED", logParams = true)
     public ResourceDto updateResource(UUID resourceId, ResourceRequest request) {
         validateResource(request);
         Resource resource = resourceRepository.findById(resourceId)
@@ -177,7 +177,7 @@ public class ResourceServiceImpl implements ResourceService {
     }
 
     @Override
-    @Audited(action = "RESOURCE_DEACTIVATED")
+    @Audited(action = "RESOURCE_DEACTIVATED", logParams = true)
     public void deleteResource(UUID resourceId) {
 
         Resource resource = resourceRepository.findById(resourceId)

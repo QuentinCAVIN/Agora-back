@@ -98,4 +98,8 @@ public class Reservation {
 
     @Column(name = "deposit_updated_by_name", length = 255)
     private String depositUpdatedByName;
+
+    /** Référence métier : {@code yyMMdd} + 5 chiffres (séquence par jour de réservation). */
+    @Column(name = "booking_reference", nullable = false, length = 16, unique = true)
+    private String bookingReference;
 }

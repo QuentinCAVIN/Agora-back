@@ -6,11 +6,11 @@ import com.agora.entity.audit.AuditLog;
 import com.agora.entity.user.User;
 import com.agora.repository.audit.AuditLogRepository;
 import com.agora.repository.user.UserRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.InvalidDataAccessResourceUsageException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -22,8 +22,10 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -33,9 +35,10 @@ public class AdminAuditQueryService {
     private static final int MAX_PAGE_SIZE = 100;
     private static final ZoneId REPORTING_ZONE = ZoneId.of("Europe/Paris");
 
+    private static final int MAX_TIMELINE_SCAN = 5000;
+
     private final AuditLogRepository auditLogRepository;
     private final UserRepository userRepository;
-    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public AdminAuditPageResponse list(
@@ -45,13 +48,23 @@ public class AdminAuditQueryService {
             String targetUserId,
             Boolean impersonationOnly,
             LocalDate dateFrom,
-            LocalDate dateTo
+            LocalDate dateTo,
+            String reservationId
     ) {
         int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "performedAt"));
 
         String adminFilter = resolveUserFilter(adminUserId);
         String targetFilter = resolveUserFilter(targetUserId);
+
+        if (reservationId != null && !reservationId.isBlank()) {
+            Page<AuditLog> p = findLogsForReservation(reservationId.trim(), pageable);
+            return new AdminAuditPageResponse(
+                    p.getContent().stream().map(this::toEntry).toList(),
+                    p.getTotalElements(),
+                    p.getTotalPages()
+            );
+        }
 
         Specification<AuditLog> spec = buildSpecification(adminFilter, targetFilter, impersonationOnly, dateFrom, dateTo);
         Page<AuditLog> p = auditLogRepository.findAll(spec, pageable);
@@ -61,6 +74,38 @@ public class AdminAuditQueryService {
                 p.getTotalElements(),
                 p.getTotalPages()
         );
+    }
+
+    private Page<AuditLog> findLogsForReservation(String reservationId, Pageable pageable) {
+        try {
+            return auditLogRepository.findPageByDetailsReservationId(reservationId, pageable);
+        } catch (InvalidDataAccessResourceUsageException ex) {
+            return filterReservationTimelineInMemory(reservationId, pageable);
+        }
+    }
+
+    /** Fallback H2 / tests : parcourt un bloc d’entrées récentes (borne {@link #MAX_TIMELINE_SCAN}). */
+    private Page<AuditLog> filterReservationTimelineInMemory(String reservationId, Pageable pageable) {
+        Pageable scan =
+                PageRequest.of(0, MAX_TIMELINE_SCAN, Sort.by(Sort.Direction.DESC, "performedAt"));
+        List<AuditLog> all = auditLogRepository.findAll(scan).getContent();
+        List<AuditLog> match = all.stream()
+                .filter(log -> reservationId.equals(extractReservationIdFromDetails(log)))
+                .toList();
+        int start = (int) pageable.getOffset();
+        int end = Math.min(start + pageable.getPageSize(), match.size());
+        if (start >= match.size()) {
+            return new PageImpl<>(Collections.emptyList(), pageable, match.size());
+        }
+        return new PageImpl<>(match.subList(start, end), pageable, match.size());
+    }
+
+    private static String extractReservationIdFromDetails(AuditLog log) {
+        if (log.getDetails() == null) {
+            return null;
+        }
+        Object v = log.getDetails().get("reservationId");
+        return v != null ? Objects.toString(v, null) : null;
     }
 
     /**
@@ -121,27 +166,32 @@ public class AdminAuditQueryService {
     }
 
     private AdminAuditEntryResponse toEntry(AuditLog log) {
-        Map<String, Object> detailsMap = parseDetails(log.getDetails());
+        Map<String, Object> detailsMap = log.getDetails() != null ? log.getDetails() : Collections.emptyMap();
+        Map<String, Object> enriched = enrichDetailsForDisplay(detailsMap);
         String target = log.getTargetUser() != null ? log.getTargetUser() : "";
         return new AdminAuditEntryResponse(
                 log.getId().toString(),
                 log.getAdminUser(),
                 target.isBlank() ? null : target,
                 log.getAction(),
-                detailsMap,
+                enriched,
                 log.isImpersonation(),
                 log.getPerformedAt()
         );
     }
 
-    private Map<String, Object> parseDetails(String json) {
-        if (json == null || json.isBlank()) {
-            return Collections.emptyMap();
+    private static Map<String, Object> enrichDetailsForDisplay(Map<String, Object> detailsMap) {
+        if (detailsMap.isEmpty()) {
+            return detailsMap;
         }
-        try {
-            return objectMapper.readValue(json, new TypeReference<>() {});
-        } catch (Exception e) {
-            return Map.of("raw", json);
+        LinkedHashMap<String, Object> out = new LinkedHashMap<>(detailsMap);
+        Object rid = detailsMap.get("reservationId");
+        if (rid != null) {
+            String s = String.valueOf(rid);
+            if (s.length() >= 8) {
+                out.putIfAbsent("reservationDisplayRef", "Résa · " + s.substring(0, 8));
+            }
         }
+        return out;
     }
 }

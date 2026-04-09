@@ -35,7 +35,9 @@ public class AdminAuditController {
             @RequestParam(required = false) String targetUserId,
             @RequestParam(required = false) Boolean impersonationOnly,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            @Parameter(description = "Filtrer les entrées dont le détail JSON contient ce reservationId (timeline)")
+            @RequestParam(required = false) String reservationId
     ) {
         return adminAuditQueryService.list(
                 page,
@@ -44,7 +46,8 @@ public class AdminAuditController {
                 targetUserId,
                 impersonationOnly,
                 dateFrom,
-                dateTo
+                dateTo,
+                reservationId
         );
     }
 }

@@ -11,6 +11,7 @@ import com.agora.enums.user.AccountType;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.repository.user.UserRepository;
+import com.agora.testsupport.TestBookingRefs;
 import com.agora.testutil.TestJwtUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -121,6 +122,7 @@ class ReservationsSecurityIntegrationTest {
         reservation.setSlotEnd(LocalTime.of(12, 0));
         reservation.setStatus(ReservationStatus.CONFIRMED);
         reservation.setPurpose("Security test reservation");
+        reservation.setBookingReference(TestBookingRefs.next());
         testReservationIdUser1 = reservationRepository.save(reservation).getId();
     }
 
@@ -252,6 +254,7 @@ class ReservationsSecurityIntegrationTest {
         toCancel.setSlotEnd(LocalTime.of(17, 0));
         toCancel.setStatus(ReservationStatus.CONFIRMED);
         toCancel.setPurpose("To cancel");
+        toCancel.setBookingReference(TestBookingRefs.next());
         UUID reservationToCancel = reservationRepository.save(toCancel).getId();
 
         String token = testJwtUtil.createValidUserToken(USER1_EMAIL);

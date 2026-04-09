@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
 public @interface Audited {
     String action();
 
-    boolean logParams() default true;
+    boolean logParams() default false;
 
     boolean logResult() default false;
 

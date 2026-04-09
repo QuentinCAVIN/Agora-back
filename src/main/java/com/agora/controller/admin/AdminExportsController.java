@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -29,9 +30,10 @@ public class AdminExportsController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<byte[]> exportReservations(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            Authentication authentication
     ) {
-        byte[] data = adminExportService.exportReservationsCsv(dateFrom, dateTo);
+        byte[] data = adminExportService.exportReservationsCsv(dateFrom, dateTo, authentication);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=reservations.csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))
@@ -43,9 +45,10 @@ public class AdminExportsController {
     @SecurityRequirement(name = "bearerAuth")
     public ResponseEntity<byte[]> exportPayments(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateFrom,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateTo,
+            Authentication authentication
     ) {
-        byte[] data = adminExportService.exportPaymentsCsv(dateFrom, dateTo);
+        byte[] data = adminExportService.exportPaymentsCsv(dateFrom, dateTo, authentication);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=payments.csv")
                 .contentType(MediaType.parseMediaType("text/csv;charset=UTF-8"))

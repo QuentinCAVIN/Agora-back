@@ -66,4 +66,16 @@ public class SuperadminController {
     public void revokeAdminSupport(@PathVariable UUID userId) {
         superadminService.revokeAdminSupport(userId);
     }
+
+    @DeleteMapping("/secretary-admin/{userId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Retirer le rôle SECRETARY_ADMIN (interdit pour le dernier compte actif)")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Rôle retiré"),
+            @ApiResponse(responseCode = "403", description = "Accès réservé au SUPERADMIN"),
+            @ApiResponse(responseCode = "409", description = "Dernier secrétaire ou compte inadapté")
+    })
+    public void revokeSecretaryAdmin(@PathVariable UUID userId) {
+        superadminService.revokeSecretaryAdmin(userId);
+    }
 }

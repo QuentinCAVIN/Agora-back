@@ -12,4 +12,10 @@ public interface SuperadminService {
     AdminSupportUserDto grantAdminSupport(UUID userId);
 
     void revokeAdminSupport(UUID userId);
+
+    /**
+     * Retire le rôle {@link com.agora.entity.user.ERole#SECRETARY_ADMIN} persisté.
+     * Interdit s'il n'existe qu'un seul compte actif avec ce rôle (barème énoncé).
+     */
+    void revokeSecretaryAdmin(UUID userId);
 }

@@ -1,6 +1,7 @@
 package com.agora.entity.reservation;
 
 import com.agora.entity.group.Group;
+import com.agora.testsupport.TestBookingRefs;
 import com.agora.entity.resource.Resource;
 import com.agora.entity.user.User;
 import com.agora.enums.reservation.ReservationStatus;
@@ -43,6 +44,7 @@ class ReservationJpaTest {
         reservation.setStatus(ReservationStatus.CONFIRMED);
         reservation.setPurpose("Reunion de travail");
         reservation.setGroup(group);
+        reservation.setBookingReference(TestBookingRefs.next());
 
         entityManager.persist(reservation);
         entityManager.flush();
@@ -164,6 +166,7 @@ class ReservationJpaTest {
         reservation.setSlotEnd(LocalTime.of(18, 0));
         reservation.setStatus(ReservationStatus.PENDING_VALIDATION);
         reservation.setPurpose("Reservation de test");
+        reservation.setBookingReference(TestBookingRefs.next());
         return reservation;
     }
 

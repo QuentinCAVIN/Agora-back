@@ -20,6 +20,8 @@ final class SeedGroupsHelper {
         Group defaultGroup = ensureGroup(SeedConstants.GROUP_DEFAULT, true);
         Group habitants = ensureGroup(SeedConstants.GROUP_HABITANTS, true);
         Group council = ensureGroup(SeedConstants.GROUP_COUNCIL, true);
+        council.setCouncilPowers(true);
+        council = groupRepository.save(council);
         Group assoc = ensureGroup(SeedConstants.GROUP_ASSOC, false);
         Group staff = ensureGroup(SeedConstants.GROUP_STAFF, false);
 
