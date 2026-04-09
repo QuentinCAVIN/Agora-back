@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface WaitlistEntryRepository extends JpaRepository<WaitlistEntry, UUID> {
 
+    void deleteByUser_Id(UUID userId);
+
     @Query("""
             select w from WaitlistEntry w
             join fetch w.resource r

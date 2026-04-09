@@ -25,7 +25,8 @@ public record ReservationSummaryResponseDto(
         int depositAmountFullCents,
         String discountLabel,
         Instant createdAt,
-        String userName
+        String userName,
+        UUID recurringGroupId
 ) {
     public ReservationSummaryResponseDto(
             UUID id,
@@ -54,6 +55,7 @@ public record ReservationSummaryResponseDto(
                 depositAmountFullCents,
                 discountLabel,
                 createdAt,
+                null,
                 null
         );
     }

@@ -12,6 +12,8 @@ import java.util.UUID;
 
 public interface AccountActivationTokenRepository extends JpaRepository<AccountActivationToken, UUID> {
 
+    void deleteByUser_Id(UUID userId);
+
     Optional<AccountActivationToken> findByToken(String token);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

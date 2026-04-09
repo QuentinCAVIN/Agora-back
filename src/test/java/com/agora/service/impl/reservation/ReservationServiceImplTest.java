@@ -13,6 +13,7 @@ import com.agora.exception.BusinessException;
 import com.agora.exception.auth.AuthRequiredException;
 import com.agora.exception.reservation.ReservationForbiddenNoGroupException;
 import com.agora.exception.reservation.SlotUnavailableException;
+import com.agora.repository.calendar.BlackoutPeriodRepository;
 import com.agora.repository.group.GroupMembershipRepository;
 import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
@@ -52,6 +53,8 @@ class ReservationServiceImplTest {
 
     @Mock
     private ReservationRepository reservationRepository;
+    @Mock
+    private BlackoutPeriodRepository blackoutPeriodRepository;
     @Mock
     private ResourceRepository resourceRepository;
     @Mock

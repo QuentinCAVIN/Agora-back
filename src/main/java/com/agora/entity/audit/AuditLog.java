@@ -2,6 +2,8 @@ package com.agora.entity.audit;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -27,6 +29,8 @@ public class AuditLog {
     @Column(nullable = false)
     private String action;
 
+    /** JSONB PostgreSQL : mapper le type JDBC JSON pour éviter l’INSERT en varchar. */
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb")
     private String details;
 

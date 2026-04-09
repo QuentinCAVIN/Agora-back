@@ -18,6 +18,8 @@ import java.util.UUID;
 
 public interface ReservationRepository extends JpaRepository<Reservation, UUID>, JpaSpecificationExecutor<Reservation> {
 
+    void deleteByUser_Id(UUID userId);
+
     long countByReservationDate(LocalDate reservationDate);
 
     long countByStatus(ReservationStatus status);

@@ -11,14 +11,19 @@ import com.agora.dto.response.admin.ImpersonationTokenResponseDto;
 import com.agora.dto.response.auth.GroupDiscountLabelFormatter;
 import com.agora.entity.group.Group;
 import com.agora.entity.group.GroupMembership;
+import com.agora.entity.user.ERole;
 import com.agora.entity.user.User;
 import com.agora.enums.user.AccountStatus;
 import com.agora.enums.user.AccountType;
 import com.agora.exception.BusinessException;
 import com.agora.exception.ErrorCode;
 import com.agora.exception.resource.ResourceNotFountException;
+import com.agora.repository.auth.AccountActivationTokenRepository;
 import com.agora.repository.group.GroupMembershipRepository;
 import com.agora.repository.group.GroupRepository;
+import com.agora.repository.reservation.ReservationDocumentRepository;
+import com.agora.repository.reservation.ReservationRepository;
+import com.agora.repository.waitlist.WaitlistEntryRepository;
 import com.agora.config.SecurityUtils;
 import com.agora.repository.user.UserRepository;
 import com.agora.service.auth.AccountActivationService;
@@ -51,10 +56,15 @@ public class AdminUserService {
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository groupMembershipRepository;
+    private final ReservationRepository reservationRepository;
+    private final ReservationDocumentRepository reservationDocumentRepository;
+    private final WaitlistEntryRepository waitlistEntryRepository;
+    private final AccountActivationTokenRepository accountActivationTokenRepository;
     private final AccountActivationService accountActivationService;
     private final JwtService jwtService;
     private final AuditService auditService;
     private final SecurityUtils securityUtils;
+    private final AdminUserPrintSummaryService adminUserPrintSummaryService;
 
     @Transactional(readOnly = true)
     public AdminUsersListResponse listUsers(int page, int size, String accountTypeParam, String statusParam) {
@@ -119,6 +129,44 @@ public class AdminUserService {
         userRepository.save(u);
     }
 
+    /**
+     * Suppression physique (purge) : réservations, file d’attente, jetons d’activation, adhésions de groupes.
+     * Réservé au secrétariat — impossible pour soi-même ou pour un compte {@link ERole#SUPERADMIN}.
+     */
+    @Transactional
+    public void purgeUser(UUID userId, Authentication authentication) {
+        String actorSubject = securityUtils.getAuthenticatedEmail(authentication);
+        User actor = userRepository.findByJwtSubject(actorSubject)
+                .orElseThrow(() -> new ResourceNotFountException("Utilisateur authentifié introuvable."));
+        if (actor.getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Impossible de supprimer votre propre compte.");
+        }
+        User target = userRepository.findByIdWithRoles(userId)
+                .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
+        if (target.getRoles() != null && target.getRoles().contains(ERole.SUPERADMIN)) {
+            throw new BusinessException(ErrorCode.VALIDATION_ERROR, "Impossible de supprimer un compte superadmin.");
+        }
+
+        String targetLabel = target.getEmail() != null && !target.getEmail().isBlank()
+                ? target.getEmail()
+                : target.getInternalRef();
+
+        reservationDocumentRepository.deleteByReservation_User_Id(userId);
+        reservationRepository.deleteByUser_Id(userId);
+        waitlistEntryRepository.deleteByUser_Id(userId);
+        accountActivationTokenRepository.deleteByUser_Id(userId);
+        groupMembershipRepository.deleteByUser_Id(userId);
+        userRepository.delete(target);
+
+        auditService.log(
+                "USER_PURGED",
+                actorSubject,
+                targetLabel,
+                Map.of("userId", userId.toString()),
+                false
+        );
+    }
+
     @Transactional(readOnly = true)
     public ImpersonationTokenResponseDto impersonate(UUID targetUserId, Authentication adminAuth) {
         if (!securityUtils.hasAuthority(adminAuth, "ROLE_SUPERADMIN")
@@ -176,6 +224,12 @@ public class AdminUserService {
                 groups,
                 user.getCreatedAt().toString()
         );
+    }
+
+    @Transactional(readOnly = true)
+    public byte[] getUserPrintSummaryPdf(UUID userId) {
+        AdminUserDetailResponseDto detail = getUserDetail(userId);
+        return adminUserPrintSummaryService.buildPdf(detail);
     }
 
     @Transactional

@@ -19,8 +19,9 @@ public record ResourceRequest(
         @Min(0)
         int depositAmountCents,
 
+        /** Null ou absent : tarif catalogue non renseigne. Sinon montant en centimes (0 = gratuit). */
         @Min(0)
-        int rentalPriceCents,
+        Integer rentalPriceCents,
 
         @Size(max = 500)
         String imageUrl,

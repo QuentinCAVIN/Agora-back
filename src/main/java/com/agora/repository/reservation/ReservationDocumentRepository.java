@@ -8,5 +8,7 @@ import java.util.UUID;
 
 public interface ReservationDocumentRepository extends JpaRepository<ReservationDocument, UUID> {
 
+    void deleteByReservation_User_Id(UUID userId);
+
     List<ReservationDocument> findByReservation_IdOrderByCreatedAtDesc(UUID reservationId);
 }

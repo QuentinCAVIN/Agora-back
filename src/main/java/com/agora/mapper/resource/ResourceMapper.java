@@ -43,7 +43,10 @@ public class ResourceMapper {
                 .capacity(request.capacity())
                 .description(request.description())
                 .depositAmountCents(request.depositAmountCents())
-                .rentalPriceCents((double) request.rentalPriceCents())
+                .rentalPriceCents(
+                        request.rentalPriceCents() == null
+                                ? null
+                                : request.rentalPriceCents().doubleValue())
                 .imageUrl(request.imageUrl())
                 .accessibilityTags(mapTagsToEnum(request.accessibilityTags()))
                 .active(true)
@@ -61,7 +64,10 @@ public class ResourceMapper {
         resource.setCapacity(request.capacity());
         resource.setDescription(request.description());
         resource.setDepositAmountCents(request.depositAmountCents());
-        resource.setRentalPriceCents((double) request.rentalPriceCents());
+        resource.setRentalPriceCents(
+                request.rentalPriceCents() == null
+                        ? null
+                        : request.rentalPriceCents().doubleValue());
         resource.setImageUrl(request.imageUrl());
         resource.setAccessibilityTags(mapTagsToEnum(request.accessibilityTags()));
 

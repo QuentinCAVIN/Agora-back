@@ -20,6 +20,7 @@ import com.agora.exception.auth.AuthRequiredException;
 import com.agora.exception.auth.AuthUserNotFoundException;
 import com.agora.exception.reservation.ReservationForbiddenNoGroupException;
 import com.agora.exception.reservation.SlotUnavailableException;
+import com.agora.repository.calendar.BlackoutPeriodRepository;
 import com.agora.repository.group.GroupMembershipRepository;
 import com.agora.repository.group.GroupRepository;
 import com.agora.repository.reservation.ReservationRepository;
@@ -61,6 +62,7 @@ public class ReservationServiceImpl implements ReservationService {
 
     private final ReservationRepository reservationRepository;
     private final ResourceRepository resourceRepository;
+    private final BlackoutPeriodRepository blackoutPeriodRepository;
     private final UserRepository userRepository;
     private final GroupRepository groupRepository;
     private final GroupMembershipRepository groupMembershipRepository;
@@ -101,6 +103,12 @@ public class ReservationServiceImpl implements ReservationService {
 
         Group selectedGroup = resolveGroupIfPresent(request.groupId(), user.getId());
         validateReservationRights(selectedGroup, request.groupId());
+
+        if (blackoutPeriodRepository.countBlockingForResourceOnDate(resource.getId(), request.date()) > 0) {
+            throw new SlotUnavailableException(
+                    "La ressource est fermée à cette date (période d'indisponibilité planifiée)."
+            );
+        }
 
         boolean overlapping = reservationRepository.existsOverlappingSlot(
                 resource.getId(),
@@ -332,7 +340,9 @@ public class ReservationServiceImpl implements ReservationService {
                 d.depositAmountCents(),
                 d.depositAmountFullCents(),
                 d.discountLabel(),
-                d.createdAt()
+                d.createdAt(),
+                d.userName(),
+                d.recurringGroupId()
         );
     }
 
@@ -443,7 +453,8 @@ public class ReservationServiceImpl implements ReservationService {
                 depositFull,
                 "Aucune remise",
                 reservation.getCreatedAt(),
-                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName()
+                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName(),
+                reservation.getRecurringGroupId()
         );
     }
 

@@ -118,7 +118,9 @@ public class AdminReservationOperationsService {
                 depositApplied,
                 depositFull,
                 "Aucune remise",
-                reservation.getCreatedAt()
+                reservation.getCreatedAt(),
+                reservation.getUser().getFirstName() + " " + reservation.getUser().getLastName(),
+                reservation.getRecurringGroupId()
         );
     }
 }

@@ -9,8 +9,10 @@ import com.agora.enums.reservation.ReservationStatus;
 import com.agora.enums.resource.ResourceType;
 import com.agora.exception.BusinessException;
 import com.agora.exception.ErrorCode;
+import com.agora.repository.calendar.BlackoutPeriodRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,10 +28,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class CalendarServiceImplTest {
@@ -40,8 +43,16 @@ class CalendarServiceImplTest {
     @Mock
     private ReservationRepository reservationRepository;
 
+    @Mock
+    private BlackoutPeriodRepository blackoutPeriodRepository;
+
     @InjectMocks
     private CalendarServiceImpl calendarService;
+
+    @BeforeEach
+    void stubNoBlackouts() {
+        lenient().when(blackoutPeriodRepository.findOverlappingRange(any(), any())).thenReturn(List.of());
+    }
 
     @Test
     void getMonthlyCalendar_marksSlotUnavailableWhenReservationOverlaps() {

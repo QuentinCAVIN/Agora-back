@@ -3,11 +3,13 @@ package com.agora.service.impl.calendar;
 import com.agora.dto.response.calendar.CalendarDayDto;
 import com.agora.dto.response.calendar.CalendarResponseDto;
 import com.agora.dto.response.calendar.CalendarSlotDto;
+import com.agora.entity.calendar.BlackoutPeriod;
 import com.agora.entity.reservation.Reservation;
 import com.agora.entity.resource.Resource;
 import com.agora.enums.reservation.ReservationStatus;
 import com.agora.exception.BusinessException;
 import com.agora.exception.ErrorCode;
+import com.agora.repository.calendar.BlackoutPeriodRepository;
 import com.agora.repository.reservation.ReservationRepository;
 import com.agora.repository.resource.ResourceRepository;
 import com.agora.service.calendar.CalendarService;
@@ -39,6 +41,7 @@ public class CalendarServiceImpl implements CalendarService {
 
     private final ResourceRepository resourceRepository;
     private final ReservationRepository reservationRepository;
+    private final BlackoutPeriodRepository blackoutPeriodRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,9 +63,11 @@ public class CalendarServiceImpl implements CalendarService {
                         BLOCKING_STATUSES
                 );
 
+        List<BlackoutPeriod> blackouts = blackoutPeriodRepository.findOverlappingRange(first, last);
+
         List<CalendarDayDto> days = new ArrayList<>();
         for (LocalDate date = first; !date.isAfter(last); date = date.plusDays(1)) {
-            days.add(buildDay(date, resources, blockingReservations));
+            days.add(buildDay(date, resources, blockingReservations, blackouts));
         }
 
         return new CalendarResponseDto(year, month, days);
@@ -83,17 +88,25 @@ public class CalendarServiceImpl implements CalendarService {
         return List.of(resource);
     }
 
-    private CalendarDayDto buildDay(LocalDate date, List<Resource> resources, List<Reservation> blockingReservations) {
+    private CalendarDayDto buildDay(
+            LocalDate date,
+            List<Resource> resources,
+            List<Reservation> blockingReservations,
+            List<BlackoutPeriod> blackouts
+    ) {
         List<CalendarSlotDto> slots = new ArrayList<>();
         for (Resource resource : resources) {
+            boolean dayBlackout = isResourceBlackedOutOnDate(resource.getId(), date, blackouts);
             for (ResourceSlotTemplate.FixedSlot fixed : ResourceSlotTemplate.defaultSlots()) {
-                boolean available = !isSlotBlocked(
-                        resource.getId(),
-                        date,
-                        fixed.start(),
-                        fixed.end(),
-                        blockingReservations
-                );
+                boolean available =
+                        !dayBlackout
+                                && !isSlotBlocked(
+                                        resource.getId(),
+                                        date,
+                                        fixed.start(),
+                                        fixed.end(),
+                                        blockingReservations
+                                );
                 slots.add(new CalendarSlotDto(
                         resource.getId(),
                         resource.getName(),
@@ -108,7 +121,35 @@ public class CalendarServiceImpl implements CalendarService {
                 .comparing(CalendarSlotDto::resourceName, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(CalendarSlotDto::slotStart));
 
-        return new CalendarDayDto(date, false, null, slots);
+        String blackoutReason = globalBlackoutReasonForDate(date, blackouts);
+        boolean isGlobalBlackout = blackoutReason != null;
+
+        return new CalendarDayDto(date, isGlobalBlackout, blackoutReason, slots);
+    }
+
+    /**
+     * Jour marqué « blackout » dans l’API lorsqu’une fermeture <strong>globale</strong> couvre la date
+     * (affichage front). Les fermetures par ressource se traduisent par des créneaux indisponibles.
+     */
+    private String globalBlackoutReasonForDate(LocalDate date, List<BlackoutPeriod> blackouts) {
+        return blackouts.stream()
+                .filter(b -> b.getResource() == null)
+                .filter(b -> !date.isBefore(b.getDateFrom()) && !date.isAfter(b.getDateTo()))
+                .map(BlackoutPeriod::getReason)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isResourceBlackedOutOnDate(UUID resourceId, LocalDate date, List<BlackoutPeriod> blackouts) {
+        return blackouts.stream().anyMatch(b -> {
+            if (date.isBefore(b.getDateFrom()) || date.isAfter(b.getDateTo())) {
+                return false;
+            }
+            if (b.getResource() == null) {
+                return true;
+            }
+            return b.getResource().getId().equals(resourceId);
+        });
     }
 
     private boolean isSlotBlocked(
