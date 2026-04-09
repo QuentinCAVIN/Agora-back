@@ -1,6 +1,5 @@
 package com.agora.controller.admin;
 
-import com.agora.config.MethodSecurityConfig;
 import com.agora.config.SecurityConfig;
 import com.agora.dto.request.admin.AdminSupportRequestDto;
 import com.agora.dto.response.admin.AdminSupportUserDto;
@@ -15,7 +14,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -34,9 +35,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SuperadminController.class)
-@Import({SecurityConfig.class, MethodSecurityConfig.class})
+@Import({SecurityConfig.class, SuperadminControllerWebTest.TestMethodSecurityConfig.class})
 @Tag("security-web")
 class SuperadminControllerWebTest {
+
+    @TestConfiguration
+    @EnableMethodSecurity
+    static class TestMethodSecurityConfig {
+    }
 
     @Autowired
     private MockMvc mockMvc;
