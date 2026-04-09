@@ -58,7 +58,11 @@ public class AdminAuditQueryService {
         String targetFilter = resolveUserFilter(targetUserId);
 
         if (reservationId != null && !reservationId.isBlank()) {
-            Page<AuditLog> p = findLogsForReservation(reservationId.trim(), pageable);
+            // Requête native : ne pas repasser Sort "performedAt" dans le Pageable — Spring le concatène
+            // tel quel en SQL (colonne inexistante). L'ORDER BY performed_at est déjà dans la requête.
+            Pageable reservationPageable =
+                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+            Page<AuditLog> p = findLogsForReservation(reservationId.trim(), reservationPageable);
             return new AdminAuditPageResponse(
                     p.getContent().stream().map(this::toEntry).toList(),
                     p.getTotalElements(),

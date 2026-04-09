@@ -61,3 +61,6 @@ management:
 logging:
   pattern:
     level: "%5p [traceId=%X{traceId}] [corrId=%X{correlationId}]"
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
