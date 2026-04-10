@@ -11,6 +11,7 @@ public final class UserGroupSummaryMapping {
                 group.getId(),
                 group.getName(),
                 group.isPreset(),
+                group.isCouncilPowers(),
                 group.isCanBookImmobilier(),
                 group.isCanBookMobilier(),
                 group.getDiscountType(),

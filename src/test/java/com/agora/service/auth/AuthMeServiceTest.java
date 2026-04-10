@@ -93,6 +93,7 @@ class AuthMeServiceTest {
         assertEquals(1, response.getGroups().size());
         assertEquals("Public", response.getGroups().getFirst().getName());
         assertEquals(true, response.getGroups().getFirst().isPreset());
+        assertEquals(false, response.getGroups().getFirst().isCouncilPowers());
         assertEquals(false, response.isAdminSupport());
     }
 

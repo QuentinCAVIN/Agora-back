@@ -13,6 +13,7 @@ public record AdminUserDetailResponseDto(
         String internalRef,
         String notesAdmin,
         List<AdminUserGroupSnippetDto> groups,
+        List<String> exemptions,
         String createdAt
 ) {
 }

@@ -9,6 +9,7 @@ import com.agora.dto.response.admin.AdminUserRowDto;
 import com.agora.dto.response.admin.AdminUsersListResponse;
 import com.agora.dto.response.admin.ImpersonationTokenResponseDto;
 import com.agora.dto.response.auth.GroupDiscountLabelFormatter;
+import com.agora.dto.response.auth.UserExemptionLabels;
 import com.agora.entity.group.Group;
 import com.agora.entity.group.GroupMembership;
 import com.agora.entity.user.ERole;
@@ -42,6 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -81,8 +83,20 @@ public class AdminUserService {
                 spec,
                 PageRequest.of(Math.max(page, 0), safeSize, Sort.by(Sort.Direction.DESC, "createdAt"))
         );
+        List<User> content = users.getContent();
+        Map<UUID, List<Group>> groupsByUser = new HashMap<>();
+        if (!content.isEmpty()) {
+            List<UUID> userIds = content.stream().map(User::getId).toList();
+            for (GroupMembership gm : groupMembershipRepository.findAllByUserIdsWithGroup(userIds)) {
+                groupsByUser
+                        .computeIfAbsent(gm.getUser().getId(), k -> new ArrayList<>())
+                        .add(gm.getGroup());
+            }
+        }
         return new AdminUsersListResponse(
-                users.getContent().stream().map(this::toRow).toList(),
+                content.stream()
+                        .map(u -> toRow(u, groupsByUser.getOrDefault(u.getId(), List.of())))
+                        .toList(),
                 users.getTotalElements(),
                 users.getTotalPages()
         );
@@ -239,15 +253,13 @@ public class AdminUserService {
     public AdminUserDetailResponseDto getUserDetail(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFountException("Utilisateur introuvable."));
-        List<AdminUserGroupSnippetDto> groups = groupMembershipRepository.findAllByUserIdWithGroup(user.getId()).stream()
-                .map(gm -> new AdminUserGroupSnippetDto(
-                        gm.getGroup().getId().toString(),
-                        gm.getGroup().getName(),
-                        GroupDiscountLabelFormatter.format(
-                                gm.getGroup().getDiscountType(),
-                                gm.getGroup().getDiscountValue())
-                ))
+        List<GroupMembership> memberships = groupMembershipRepository.findAllByUserIdWithGroup(user.getId());
+        List<Group> memberGroups = memberships.stream().map(GroupMembership::getGroup).toList();
+        List<AdminUserGroupSnippetDto> groups = memberships.stream()
+                .map(GroupMembership::getGroup)
+                .map(this::toAdminGroupSnippet)
                 .toList();
+        List<String> exemptions = UserExemptionLabels.fromGroups(memberGroups);
         return new AdminUserDetailResponseDto(
                 user.getId().toString(),
                 user.getEmail(),
@@ -259,7 +271,19 @@ public class AdminUserService {
                 user.getInternalRef(),
                 user.getNotesAdmin(),
                 groups,
+                exemptions,
                 user.getCreatedAt().toString()
+        );
+    }
+
+    private AdminUserGroupSnippetDto toAdminGroupSnippet(Group g) {
+        return new AdminUserGroupSnippetDto(
+                g.getId().toString(),
+                g.getName(),
+                GroupDiscountLabelFormatter.format(g.getDiscountType(), g.getDiscountValue()),
+                g.isCouncilPowers(),
+                g.isCanBookImmobilier(),
+                g.isCanBookMobilier()
         );
     }
 
@@ -398,7 +422,7 @@ public class AdminUserService {
         return base + "-" + year + "-" + suffix;
     }
 
-    private AdminUserRowDto toRow(User user) {
+    private AdminUserRowDto toRow(User user, List<Group> memberGroups) {
         return new AdminUserRowDto(
                 user.getId().toString(),
                 user.getEmail(),
@@ -409,7 +433,7 @@ public class AdminUserService {
                 user.getPhone() != null ? user.getPhone() : "",
                 user.getInternalRef(),
                 user.getNotesAdmin(),
-                List.of(),
+                UserExemptionLabels.fromGroups(memberGroups),
                 user.getCreatedAt().toString()
         );
     }

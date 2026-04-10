@@ -17,6 +17,10 @@ public class UserGroupSummaryDto {
     private final String name;
     @JsonProperty("isPreset")
     private final boolean preset;
+    /**
+     * Membre d'un groupe à pouvoirs conseil (ex. élus) — utilisé pour les exonérations mandat côté réservation.
+     */
+    private final boolean councilPowers;
     private final boolean canBookImmobilier;
     private final boolean canBookMobilier;
     private final DiscountType discountType;

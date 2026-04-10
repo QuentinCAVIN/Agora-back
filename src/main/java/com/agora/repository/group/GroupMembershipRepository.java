@@ -27,6 +27,14 @@ public interface GroupMembershipRepository extends JpaRepository<GroupMembership
 
     @Query("""
             select gm from GroupMembership gm
+            join fetch gm.group g
+            join fetch gm.user u
+            where u.id in :userIds
+            """)
+    List<GroupMembership> findAllByUserIdsWithGroup(@Param("userIds") List<UUID> userIds);
+
+    @Query("""
+            select gm from GroupMembership gm
             join fetch gm.user u
             where gm.group.id = :groupId
             order by u.lastName asc, u.firstName asc

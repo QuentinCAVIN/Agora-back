@@ -73,6 +73,7 @@ class AuthControllerMeWebTest {
                         true,
                         false,
                         false,
+                        false,
                         DiscountType.NONE,
                         0,
                         DiscountAppliesTo.ALL,

@@ -67,13 +67,24 @@ public class AdminUserPrintSummaryService {
                 document.add(new Paragraph(" ", normal));
             }
 
+            document.add(new Paragraph("Avantages / exonerations (synthese)", bold));
+            if (user.exemptions() == null || user.exemptions().isEmpty()) {
+                document.add(new Paragraph("Aucun libelle (tarifs standard selon groupes)", normal));
+            } else {
+                for (String ex : user.exemptions()) {
+                    document.add(new Paragraph(" - " + nvl(ex), normal));
+                }
+            }
+            document.add(new Paragraph(" ", normal));
+
             document.add(new Paragraph("Groupes et tarifs", bold));
             if (user.groups() == null || user.groups().isEmpty()) {
                 document.add(new Paragraph("Aucun groupe", normal));
             } else {
                 for (AdminUserGroupSnippetDto g : user.groups()) {
+                    String rights = groupRightsSuffix(g);
                     document.add(new Paragraph(
-                            " - " + nvl(g.name()) + " : " + nvl(g.discountLabel()),
+                            " - " + nvl(g.name()) + " : " + nvl(g.discountLabel()) + rights,
                             normal));
                 }
             }
@@ -91,5 +102,12 @@ public class AdminUserPrintSummaryService {
 
     private static String nvl(String s) {
         return s == null ? "" : s;
+    }
+
+    private static String groupRightsSuffix(AdminUserGroupSnippetDto g) {
+        if (g.councilPowers()) {
+            return " [pouvoir conseil]";
+        }
+        return "";
     }
 }
